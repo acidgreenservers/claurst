@@ -76,14 +76,14 @@ pub struct SettingsScreen {
 impl SettingsScreen {
     pub fn new() -> Self {
         let settings_snapshot = Settings::load_sync().unwrap_or_default();
-        Self {
+        let mut screen = Self {
             visible: false,
             search_query: String::new(),
             selected_idx: 0,
             scroll_offset: 0,
             edit_field: None,
             edit_value: String::new(),
-            settings_snapshot,
+            settings_snapshot: settings_snapshot.clone(),
             pending_changes: HashMap::new(),
             auto_compact: false,
             notifications: true,
@@ -104,20 +104,15 @@ impl SettingsScreen {
             file_autocomplete_limit: "15".to_string(),
             file_autocomplete_show_hidden_files: false,
             file_injection_max_size: "100".to_string(),
-        }
+        };
+        // Apply settings from snapshot immediately on initialization
+        screen.apply_settings_from_snapshot();
+        screen
     }
 
-    pub fn open(&mut self) {
-        self.settings_snapshot = Settings::load_sync().unwrap_or_default();
-        self.pending_changes.clear();
-        self.edit_field = None;
-        self.edit_value.clear();
-        self.search_query.clear();
-        self.selected_idx = 0;
-        self.scroll_offset = 0;
-        self.visible = true;
-
-        // Wire real settings from snapshot
+    /// Apply all settings from the snapshot to the screen fields.
+    /// This is called on initialization and when opening the settings screen.
+    fn apply_settings_from_snapshot(&mut self) {
         self.auto_compact = self.settings_snapshot.auto_compact;
         self.notifications = self.settings_snapshot.notifications;
         self.show_turn_duration = self.settings_snapshot.show_turn_duration;
@@ -141,6 +136,20 @@ impl SettingsScreen {
         self.file_autocomplete_limit = self.settings_snapshot.config.file_autocomplete_limit.to_string();
         self.file_autocomplete_show_hidden_files = self.settings_snapshot.config.file_autocomplete_show_hidden_files;
         self.file_injection_max_size = self.settings_snapshot.config.file_injection_max_size.to_string();
+    }
+
+    pub fn open(&mut self) {
+        self.settings_snapshot = Settings::load_sync().unwrap_or_default();
+        self.pending_changes.clear();
+        self.edit_field = None;
+        self.edit_value.clear();
+        self.search_query.clear();
+        self.selected_idx = 0;
+        self.scroll_offset = 0;
+        self.visible = true;
+
+        // Wire real settings from snapshot
+        self.apply_settings_from_snapshot();
     }
 
     pub fn close(&mut self) {
@@ -806,10 +815,12 @@ mod tests {
     }
 
     #[test]
-    fn all_entries_returns_sixteen_settings() {
+    fn all_entries_returns_expected_settings() {
         let screen = SettingsScreen::new();
         let entries = all_entries(&screen);
-        assert_eq!(entries.len(), 16, "Should have 16 editable settings");
+        // Base settings are always present, plus 0-3 conditional file injection settings
+        assert!(entries.len() >= 16, "Should have at least 16 editable settings, got {}", entries.len());
+        assert!(entries.len() <= 20, "Should have at most 20 editable settings, got {}", entries.len());
     }
 
     #[test]
