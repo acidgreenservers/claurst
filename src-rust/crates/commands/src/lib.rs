@@ -2762,31 +2762,49 @@ impl SlashCommand for NormalCommand {
 #[async_trait]
 impl SlashCommand for InitCommand {
     fn name(&self) -> &str { "init" }
-    fn description(&self) -> &str { "Initialize a new project with AGENTS.md" }
+    fn description(&self) -> &str { "Initialize a new project with STATE.md and ATTRACTOR.md" }
 
     async fn execute(&self, _args: &str, ctx: &mut CommandContext) -> CommandResult {
-        let path = ctx.working_dir.join("AGENTS.md");
-        if path.exists() {
-            return CommandResult::Message(format!(
-                "AGENTS.md already exists at {}",
-                path.display()
-            ));
+        let state_path = ctx.working_dir.join("STATE.md");
+        let attractor_path = ctx.working_dir.join("ATTRACTOR.md");
+
+        let mut created = Vec::new();
+
+        if !state_path.exists() {
+            let state_content = "# Project State\n\n\
+                ## Current Phase\n\n\
+                Describe the current phase of work here.\n\n\
+                ## Known Issues\n\n\
+                - List any known issues or blockers\n\n\
+                ## Next Steps\n\n\
+                - Outline the next steps for this project\n";
+
+            match tokio::fs::write(&state_path, state_content).await {
+                Ok(()) => created.push(format!("Created STATE.md at {}", state_path.display())),
+                Err(e) => return CommandResult::Error(format!("Failed to create STATE.md: {}", e)),
+            }
+        } else {
+            created.push(format!("STATE.md already exists at {}", state_path.display()));
         }
 
-        let default_content = "# Project Instructions\n\n\
-            Add project-specific instructions and context here.\n\n\
-            ## Guidelines\n\n\
-            - Describe your project structure\n\
-            - Note any coding conventions\n\
-            - List important files and their purposes\n";
+        if !attractor_path.exists() {
+            let attractor_content = "# Semantic Attractor\n\n\
+                ## Identity Statement\n\n\
+                Define the core identity and purpose of this project here.\n\n\
+                ## Design Decisions\n\n\
+                - Record key architectural decisions and their rationale\n\n\
+                ## Invariants\n\n\
+                - List constraints and invariants that should never be broken\n";
 
-        match tokio::fs::write(&path, default_content).await {
-            Ok(()) => CommandResult::Message(format!(
-                "Created AGENTS.md at {}",
-                path.display()
-            )),
-            Err(e) => CommandResult::Error(format!("Failed to create AGENTS.md: {}", e)),
+            match tokio::fs::write(&attractor_path, attractor_content).await {
+                Ok(()) => created.push(format!("Created ATTRACTOR.md at {}", attractor_path.display())),
+                Err(e) => return CommandResult::Error(format!("Failed to create ATTRACTOR.md: {}", e)),
+            }
+        } else {
+            created.push(format!("ATTRACTOR.md already exists at {}", attractor_path.display()));
         }
+
+        CommandResult::Message(created.join("\n"))
     }
 }
 

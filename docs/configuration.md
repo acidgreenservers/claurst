@@ -228,84 +228,57 @@ claurst --dangerously-skip-permissions "..."  # equivalent to bypassPermissions
 
 ---
 
-## AGENTS.md Memory Files
+## AGENT Framework Files
 
-AGENTS.md files are plain Markdown documents that Claurst injects into the
-system prompt at startup. They let you give the model persistent context about
-your project, coding standards, or personal preferences without repeating
-yourself in every session.
+The AGENT framework uses markdown files to dictate the agent's runtime
+behavior, identity, memory, and state. These files are loaded by the harness
+(subconscious) and injected into the system prompt without the agent's
+awareness of the delivery mechanics.
 
-### File locations and priority
+### File registry and delivery
 
-Claurst loads AGENTS.md files from four locations. They are processed in the
-following order (earlier = higher priority, later content is appended below):
+| File | Role | Delivery Mode | Cascade |
+|------|------|--------------|---------|
+| `AGENTS.md` | Project identity & role | SessionStart | ✅ global → project |
+| `AGENT.md` | Agent persona & behavior | SessionStart + EveryTurn | ✅ global → project |
+| `USER.md` | User alignment & preferences | EveryTurn | ✅ global → project |
+| `ATTRACTOR.md` | Semantic anchor for inference | SessionStart | — |
+| `BRAIN.md` | Reasoning patterns & rules | SessionStart | — |
+| `HEART.md` | Core values & purpose | SessionStart | — |
+| `MEMORY.md` | Persistent cross-session state | EveryTurn | — |
+| `STATE.md` | Current project state awareness | EveryTurn | — |
 
-| Scope | Path | Description |
-|-------|------|-------------|
-| Managed | `~/.claurst/rules/*.md` | Global policy files. All `.md` files in this directory are loaded in alphabetical order. |
-| User | `~/.claurst/AGENTS.md` | Your personal preferences and instructions, applied to all projects. |
-| Project | `<project-root>/AGENTS.md` | Project-level context: architecture notes, conventions, workflows. Typically committed to version control. |
-| Local | `<project-root>/.claurst/AGENTS.md` | Local overrides not committed to version control (add `.claurst/` to `.gitignore`). |
-
-Files from all four locations are concatenated (separated by blank lines) into
-a single system-prompt fragment. If the same instruction appears at multiple
-levels, the narrower scope (Project/Local) effectively wins because it appears
-later in the prompt.
-
-### CLAUDE.md compatibility
-
-Files named `CLAUDE.md` in the same locations are treated identically to
-`AGENTS.md`. Both names are supported for compatibility with the TypeScript
-Claude Code CLI.
-
-### YAML frontmatter
-
-AGENTS.md files may begin with optional YAML frontmatter to control loading:
-
-```markdown
----
-memory_type: project
-priority: 10
-scope: project
----
-
-# My Project Notes
-
-Always use 4-space indentation. Prefer `anyhow` for error handling.
-```
-
-Frontmatter fields:
-
-| Field | Description |
-|-------|-------------|
-| `memory_type` | Informal label (currently informational only). |
-| `priority` | Integer sort priority (lower numbers are prepended first within the same scope). |
-| `scope` | Informational label for documentation purposes. |
+- **SessionStart** files are injected once into the cacheable prompt block
+  (eligible for Anthropic prompt caching).
+- **EveryTurn** files are injected each turn; the agent is nudged ~every
+  10 turns to re-read them.
+- **Cascaded files** (`AGENTS.md`, `AGENT.md`, `USER.md`) check
+  `~/.claurst/` first, then the project root. The global file wins if present.
+- `CLAUDE.md` is deprecated and no longer loaded by the harness.
 
 ### @include directives
 
-AGENTS.md files support `@include` to pull in content from other files:
+Framework files may support `@include` to pull in content from other files:
 
 ```markdown
 # Project Guide
 
 @include ./docs/architecture.md
-@include ~/shared-notes/coding-standards.md
 ```
 
 Paths may be relative to the including file, absolute, or tilde-expanded.
 Circular includes are detected and skipped. Files larger than 40 KB are
 skipped with a warning comment.
 
-### Disabling AGENTS.md loading
+### Disabling framework file loading
 
-To skip all AGENTS.md files for a session:
+To skip all framework files for a session:
 
 ```bash
 claurst --no-claude-md "your prompt"
 ```
 
-Or in a session, use the `--bare` flag to disable AGENTS.md, hooks, and
+Or in a session, use the `--bare` flag to disable framework files, hooks, and
 plugins simultaneously.
 
 ---

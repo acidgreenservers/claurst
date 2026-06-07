@@ -504,19 +504,39 @@ SSH sessions work similarly: `claurst --ssh` enables a remote-accessible session
 
 ---
 
-## AGENTS.md hierarchical memory
+## AGENT framework files
 
-Claurst reads instruction files from the filesystem before every session and whenever a relevant file changes. The lookup order is:
+Claurst reads markdown framework files from the filesystem at startup. These files dictate the agent's runtime identity, memory, state, and behavior — delivered by the harness without the agent's awareness of the mechanics.
 
-1. **Managed** — `/etc/claude-code/AGENTS.md` and `/etc/claude-code/CLAUDE.md` (administrator-controlled, always loaded).
-2. **User** — `~/.claurst/AGENTS.md` then `~/.claurst/CLAUDE.md` (personal global instructions).
-3. **Project** — `AGENTS.md`, `CLAUDE.md`, `.claurst/AGENTS.md`, and `.claurst/CLAUDE.md` in each directory from the filesystem root down to the current working directory. Files are loaded from the root toward the CWD so that parent-directory rules are visible when processing child-directory rules.
+### File registry and delivery
 
-`AGENTS.md` is preferred (universal cross-tool standard); `CLAUDE.md` is loaded next at every scope for compatibility with other Claude tooling. If both exist at the same scope, both are loaded.
+| File | Role | Delivery Mode | Cascade |
+|------|------|--------------|---------|
+| `AGENTS.md` | Project identity & role | SessionStart | ✅ global → project |
+| `AGENT.md` | Agent persona & behavior | SessionStart + EveryTurn | ✅ global → project |
+| `USER.md` | User alignment & preferences | EveryTurn | ✅ global → project |
+| `ATTRACTOR.md` | Semantic anchor for inference | SessionStart | — |
+| `BRAIN.md` | Reasoning patterns & rules | SessionStart | — |
+| `HEART.md` | Core values & purpose | SessionStart | — |
+| `MEMORY.md` | Persistent cross-session state | EveryTurn | — |
+| `STATE.md` | Current project state awareness | EveryTurn | — |
 
-Files can `@include` other files using a frontmatter include directive. Included files are resolved relative to the including file.
+- **SessionStart** files are injected once into the cacheable prompt block (eligible for Anthropic prompt caching).
+- **EveryTurn** files are injected every turn and the agent is nudged ~every 10 turns to re-read them.
+- **Cascaded files** (`AGENTS.md`, `AGENT.md`, `USER.md`) check `~/.claurst/` first, then the project root. The global file wins if present.
+- `CLAUDE.md` is deprecated and no longer loaded by the harness.
 
-The `InstructionsLoaded` hook event fires for every file that is loaded, with the `load_reason` field indicating why (e.g. `session_start`, `nested_traversal`, `path_glob_match`, `include`, `compact`).
+### @include directives
+
+Framework files may support `@include` to pull in content from other files:
+
+```markdown
+# Project Guide
+
+@include ./docs/architecture.md
+```
+
+Paths may be relative to the including file, absolute, or tilde-expanded. Circular includes are detected and skipped. Files larger than 40 KB are skipped with a warning comment.
 
 The `/memory` command opens the memory management UI for viewing, editing, and organising instruction files.
 

@@ -12,16 +12,40 @@ Claurst is a high-performance Rust reimplementation of Claude Code — a termina
 
 ---
 
-## Two-system architecture
+## Architecture: The AGENT Framework at the Core
 
-Claurst is the **convergence of two separate systems**:
+This version of Claurst Harness has the AGENT Framework integrated into it. The Rust binary is a *subconscious autonomic system* — it silently manages prompt assembly, file loading, delivery timing, and context refresh without the agent's knowledge.
 
-- **The Claurst Harness** (the Rust binary) — a *subconscious autonomic system* that silently manages file loading, prompt assembly, delivery timing, and context refresh. The agent has no awareness of these mechanics.
-- **The AGENT framework** (markdown files) — a *conscious executive layer* that dictates the agent's runtime identity, memory, state, and behavior. Files like AGENT.md, ATTRACTOR.md, STATE.md, and MEMORY.md steer the agent's cognition.
+### Subconscious Layer (The Harness)
 
-The harness governs invisibly. The framework steers explicitly. Together they produce a single continuous experience — the agent experiences memory injection as given fact, not as a mechanical process.
+The harness manages everything beneath the agent's awareness:
 
-> See [ATTRACTOR.md](https://github.com/Kuberwastaken/claurst/blob/main/ATTRACTOR.md) at the project root for the full architecture definition.
+- **File discovery** — scans `~/.claurst/` and project root for framework files at startup
+- **Delivery timing** — session-start files go into the cacheable prompt block (eligible for Anthropic prompt caching); every-turn files are nudged for re-read every ~10 turns
+- **Cascade resolution** — `AGENTS.md`, `AGENT.md`, and `USER.md` support global (`~/.claurst/`) → project (`{root}/`) fallback
+- **Prompt assembly** — 19 distinct instruction sections are assembled into the system prompt; only 3 are user-authored. The rest are harness-injected
+- **Context refresh** — a periodic nudge tells the agent which files to re-read, keeping state fresh without manual prompting
+
+### Conscious Layer (The AGENT Framework)
+
+The agent's runtime behavior, identity, and values are dictated by **markdown framework files**:
+
+| File | Role | Delivery |
+|------|------|----------|
+| `AGENTS.md` | Project identity & role | Session start (cacheable) |
+| `AGENT.md` | Agent persona & behavior | Session start + every turn |
+| `ATTRACTOR.md` | Semantic anchor for inference | Session start |
+| `BRAIN.md` | Reasoning patterns & rules | Session start |
+| `HEART.md` | Core values & purpose | Session start |
+| `MEMORY.md` | Persistent cross-session state | Every turn |
+| `STATE.md` | Current project state awareness | Every turn |
+| `USER.md` | User alignment & preferences | Every turn (global→project) |
+
+### How It Works
+
+The harness governs invisibly. The framework steers explicitly. The agent experiences memory injection as given fact, not as a mechanical process — it doesn't know delivery modes, prompt boundaries, or cascade logic exist. This is the **Harness-Subsystem Architecture**, formalized in [ATTRACTOR.md](https://github.com/Kuberwastaken/claurst/blob/main/ATTRACTOR.md) at the project root.
+
+> **For users:** You don't need the AGENT framework files. The thinking topology is baked into the binary. But if you want to shape the agent's identity, drop a file in your project root — the cascade handles the rest. The harness becomes the medium of operation, and gets out of the way.
 
 ---
 

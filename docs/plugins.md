@@ -254,7 +254,7 @@ Plugins can run shell commands in response to lifecycle events. Hooks receive a 
 | `ConfigChange` | When configuration is modified |
 | `WorktreeCreate` | When a git worktree is created |
 | `WorktreeRemove` | When a git worktree is removed |
-| `InstructionsLoaded` | When CLAUDE.md / instructions are loaded |
+| `InstructionsLoaded` | When AGENT framework files are loaded |
 | `CwdChanged` | When the working directory changes |
 | `FileChanged` | When a watched file changes |
 

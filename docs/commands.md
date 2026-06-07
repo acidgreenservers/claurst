@@ -487,7 +487,7 @@ Run a security-focused review pass. The model looks specifically for vulnerabili
 
 ### /init
 
-Initialize Claurst project configuration in the current directory. Creates a `CLAUDE.md` file that acts as persistent project-level context injected at the start of every session.
+Initialize a Claurst project with AGENT framework files. Creates `STATE.md` and `ATTRACTOR.md` in the current directory — the core files for project state tracking and semantic anchoring.
 
 ```
 /init
