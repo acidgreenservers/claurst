@@ -25,7 +25,7 @@ It's fast, it's memory-efficient, it's yours to run however you want, and there'
 
 ## Architecture: The Harness is the Subconscious
 
-Claurst is a **subconscious autonomic system** for agentic coding. The Rust binary is not just a CLI — it is the *subconscious* layer that silently governs the agent without its knowledge.
+Claurst Harness using the AGENT framework is treated as a **subconscious autonomic system** for agentic coding. The Rust binary is not just a CLI — it is the *subconscious* layer that silently governs the agent without its knowledge.
 
 ### Conscious Layer (Agent Framework)
 
@@ -54,9 +54,9 @@ The Rust binary manages **everything beneath awareness**:
 
 ### How It Changes the Topology
 
-Traditional agent harnesses treat markdown files as instructions the agent reads. Claurst inverts this: the framework files **dictate the runtime**, while the harness **governs invisibly**. The agent experiences memory injection as given fact, not as a mechanical process — it doesn't know delivery modes, prompt boundaries, or cascade logic exist. This is the **Harness-Subsystem Architecture**, formalized in `ATTRACTOR.md` at the project root.
+Traditional agent harnesses treat markdown files as instructions the agent reads. Claurst using the AGENT framework inverts this: the framework files **dictate the runtime**, while the harness **governs invisibly**. The agent experiences memory injection as given fact, not as a mechanical process — it doesn't know delivery modes, prompt boundaries, or cascade logic exist. This is the **Harness-Subsystem Architecture**, formalized in [ATTRACTOR.md](ATTRACTOR.md) at the project root.
 
-> **For users:** You don't need these framework files. Claurst's topology is baked into the binary. But if you want to shape the agent's identity, drop a file in your project root — the cascade handles the rest.
+> **For users:** You don't need the [AGENT](https://gist.github.com/acidgreenservers/001185d63e5cd65f9fbe6f7a1c70a200) framework files. The thinking topology is baked into the harness binary. But if you want to shape the agent's identity, drop a file in your project root — the cascade handles the rest, The harness becomes the medium of operation, and gets out of the way.
 
 ---
 
