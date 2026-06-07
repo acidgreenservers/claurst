@@ -23,6 +23,43 @@ It's fast, it's memory-efficient, it's yours to run however you want, and there'
 
 ---
 
+## Architecture: The Harness is the Subconscious
+
+Claurst is a **subconscious autonomic system** for agentic coding. The Rust binary is not just a CLI — it is the *subconscious* layer that silently governs the agent without its knowledge.
+
+### Conscious Layer (Agent Framework)
+
+The agent's runtime behavior, identity, and values are dictated by **markdown framework files** living in your project root or `~/.claurst/`:
+
+| File | Role | Delivery |
+|------|------|----------|
+| `AGENTS.md` | Project identity & role | Session start (cacheable) |
+| `AGENT.md` | Agent persona & behavior | Session start + every turn |
+| `ATTRACTOR.md` | Semantic anchor for inference | Session start |
+| `BRAIN.md` | Reasoning patterns & rules | Session start |
+| `HEART.md` | Core values & purpose | Session start |
+| `MEMORY.md` | Persistent cross-session state | Every turn |
+| `STATE.md` | Current project state awareness | Every turn |
+| `USER.md` | User alignment & preferences | Every turn (global→project) |
+
+### Subconscious Layer (Harness)
+
+The Rust binary manages **everything beneath awareness**:
+
+- **File discovery** — scans `~/.claurst/` and project root for framework files at startup.
+- **Delivery timing** — session-start files go into the cacheable prompt block (eligible for Anthropic prompt caching); every-turn files are nudged for re-read every ~10 turns.
+- **Cascade resolution** — `AGENTS.md`, `AGENT.md`, and `USER.md` support global (`~/.claurst/`) → project (`{root}/`) fallback. Global wins if present.
+- **Prompt assembly** — 19 distinct instruction sections are assembled into the system prompt; only 3 are user-authored. The rest are harness-injected.
+- **Context refresh** — a periodic nudge tells the agent which files to re-read, keeping state fresh without manual prompting.
+
+### How It Changes the Topology
+
+Traditional agent harnesses treat markdown files as instructions the agent reads. Claurst inverts this: the framework files **dictate the runtime**, while the harness **governs invisibly**. The agent experiences memory injection as given fact, not as a mechanical process — it doesn't know delivery modes, prompt boundaries, or cascade logic exist. This is the **Harness-Subsystem Architecture**, formalized in `ATTRACTOR.md` at the project root.
+
+> **For users:** You don't need these framework files. Claurst's topology is baked into the binary. But if you want to shape the agent's identity, drop a file in your project root — the cascade handles the rest.
+
+---
+
 > [!IMPORTANT]
 > **Claurst is now officially in Beta (v0.1.4).** The core agent, multi-provider routing, and TUI are stable enough for daily driving — expect rough edges around experimental features (flagged below). Bug reports and PRs welcome.
 
@@ -196,7 +233,12 @@ For more info on how to configure Claurst, [head over to our docs](https://claur
 ## Contributing
 
 Claurst is built for the community, by the community and we'd love your help making it better.
-Please see and include AGENTS.md for project-specific rules (for both humans and agents).
+
+Before contributing, familiarize yourself with the architecture:
+- **`ATTRACTOR.md`** — the semantic anchor governing all pattern inference decisions
+- **`STATE.md`** — current project state, known issues, and next topological moves
+- **`AGENTS.md`** — project-specific rules for both humans and agent contributors
+- **`AGENT.md`** — this repository's compiled agent persona (the source that was baked into the harness)
 
 [Open an issue](https://github.com/Kuberwastaken/claurst/issues/new) for bugs, ideas, or questions, or [Raise a PR](https://github.com/Kuberwastaken/claurst/pulls/new) to fix bugs, add features, or improve documentation.
 
