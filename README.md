@@ -25,7 +25,7 @@ It's fast, it's memory-efficient, it's yours to run however you want, and there'
 
 ## Architecture: The Harness is the Subconscious
 
-Claurst Harness using the AGENT framework is treated as a **subconscious autonomic system** for agentic coding. The Rust binary is not just a CLI — it is the *subconscious* layer that silently governs the agent without its knowledge.
+The Claurst Harness using the AGENT framework is treated as a **subconscious autonomic system** for agentic coding. The Rust binary is not just a CLI — it is the *subconscious* layer that silently governs the agent without its knowledge.
 
 ### Conscious Layer (Agent Framework)
 
