@@ -12,6 +12,19 @@ Claurst is a high-performance Rust reimplementation of Claude Code — a termina
 
 ---
 
+## Two-system architecture
+
+Claurst is the **convergence of two separate systems**:
+
+- **The Claurst Harness** (the Rust binary) — a *subconscious autonomic system* that silently manages file loading, prompt assembly, delivery timing, and context refresh. The agent has no awareness of these mechanics.
+- **The AGENT framework** (markdown files) — a *conscious executive layer* that dictates the agent's runtime identity, memory, state, and behavior. Files like AGENT.md, ATTRACTOR.md, STATE.md, and MEMORY.md steer the agent's cognition.
+
+The harness governs invisibly. The framework steers explicitly. Together they produce a single continuous experience — the agent experiences memory injection as given fact, not as a mechanical process.
+
+> See [ATTRACTOR.md](https://github.com/Kuberwastaken/claurst/blob/main/ATTRACTOR.md) at the project root for the full architecture definition.
+
+---
+
 ## What Claurst does
 
 You give Claurst a task in natural language. It plans, reads and writes files, runs shell commands, searches the web, and iterates — all inside your terminal, with every step visible in real time.

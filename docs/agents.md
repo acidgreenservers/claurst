@@ -1,5 +1,7 @@
 # Agents and Multi-Agent Features
 
+> **Note:** This page documents Claurst's *runtime named agents* — the `--agent build|plan|explore` system and coordinator mode for parallel sub-agents. This is distinct from the [AGENT framework files](../ATTRACTOR.md) (`AGENT.md`, `AGENTS.md`, `ATTRACTOR.md`, etc.) that govern the primary agent's subconscious identity via markdown-based system prompt injection. Those files live in your project root or `~/.claurst/` and are loaded by the harness without the agent's awareness — they are not the same concept as the `--agent` flag or `/agents` command documented here.
+
 Claurst has a named-agent system that lets you select a pre-configured persona with its own tool permissions, model, system prompt, and turn budget. For larger tasks it also supports a coordinator mode where a top-level agent orchestrates a pool of parallel worker agents.
 
 ---
