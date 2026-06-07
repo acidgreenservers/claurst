@@ -126,6 +126,11 @@ pub struct QueryConfig {
     pub model_registry: Option<std::sync::Arc<claurst_api::ModelRegistry>>,
     /// Managed agent (manager-executor) configuration.
     pub managed_agents: Option<claurst_core::ManagedAgentConfig>,
+    /// Framework identity files (session-start only, injected once in cacheable block).
+    /// Contains concatenated content from AGENT.md, AGENTS.md, ATTRACTOR.md, BRAIN.md, HEART.md.
+    pub framework_identity: String,
+    /// Files to periodically nudge the agent to re-read (every N turns).
+    pub periodic_nudge_files: Vec<String>,
 }
 
 impl Default for QueryConfig {
@@ -152,6 +157,8 @@ impl Default for QueryConfig {
             agent_definition: None,
             model_registry: None,
             managed_agents: None,
+            framework_identity: String::new(),
+            periodic_nudge_files: Vec::new(),
         }
     }
 }
@@ -2153,14 +2160,14 @@ fn build_system_prompt(config: &QueryConfig) -> SystemPrompt {
     let opts = SystemPromptOptions {
         custom_system_prompt: config.system_prompt.clone(),
         append_system_prompt: config.append_system_prompt.clone(),
-        // All other fields use sensible defaults:
-        // - prefix:                auto-detect from env
-        // - memory_content:        empty (callers inject via append if needed)
-        // - replace_system_prompt: false (additive mode)
-        // - coordinator_mode:      false
         output_style: config.output_style,
         custom_output_style_prompt: config.output_style_prompt.clone(),
         working_directory: config.working_directory.clone(),
+        framework_identity: config.framework_identity.clone(),
+        periodic_nudge_files: config.periodic_nudge_files.clone(),
+        periodic_nudge: claurst_core::claudemd::build_periodic_nudge(
+            &config.periodic_nudge_files,
+        ),
         ..Default::default()
     };
 

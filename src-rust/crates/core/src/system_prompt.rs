@@ -222,6 +222,16 @@ pub struct SystemPromptOptions {
     pub skip_env_info: bool,
     /// Active goal addendum (injected in dynamic section when a goal is running).
     pub active_goal_addendum: Option<String>,
+    /// Framework identity files (session-start only, injected in cacheable block).
+    /// Contains concatenated content from AGENT.md, AGENTS.md, ATTRACTOR.md,
+    /// BRAIN.md, HEART.md — loaded once at session creation.
+    pub framework_identity: String,
+    /// Files to periodically nudge the agent to re-read.
+    /// Populated by the query loop every N turns.
+    pub periodic_nudge_files: Vec<String>,
+    /// Periodic nudge text (built by claudemd::build_periodic_nudge).
+    /// Injected in the dynamic block when active.
+    pub periodic_nudge: Option<String>,
 }
 
 // ---------------------------------------------------------------------------
@@ -298,6 +308,14 @@ pub fn build_system_prompt(opts: &SystemPromptOptions) -> String {
         ));
     }
 
+    // 9.5. Framework identity (session-start files: AGENT, AGENTS, ATTRACTOR, BRAIN, HEART)
+    if !opts.framework_identity.is_empty() {
+        parts.push(format!(
+            "\n<framework_identity>\n{}\n</framework_identity>",
+            opts.framework_identity
+        ));
+    }
+
     // Dynamic boundary marker
     parts.push(SYSTEM_PROMPT_DYNAMIC_BOUNDARY.to_string());
 
@@ -331,6 +349,11 @@ pub fn build_system_prompt(opts: &SystemPromptOptions) -> String {
     // 14. Appended system prompt (--append-system-prompt)
     if let Some(append) = &opts.append_system_prompt {
         parts.push(format!("\n{}", append));
+    }
+
+    // 15. Periodic nudge (every N turns — lists files to re-read)
+    if let Some(nudge) = &opts.periodic_nudge {
+        parts.push(nudge.clone());
     }
 
     parts.join("\n")

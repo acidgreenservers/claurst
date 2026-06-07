@@ -367,6 +367,8 @@ impl Tool for AgentTool {
             agent_definition: None,
             model_registry: Some(model_registry),
             managed_agents: None,
+            framework_identity: String::new(),
+            periodic_nudge_files: Vec::new(),
         };
         // -----------------------------------------------------------------------
         // Background mode: spawn and return agent_id immediately.
