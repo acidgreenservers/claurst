@@ -71,6 +71,11 @@ Periodic Nudge — "Re-read these files to refresh context" — every ~10 turns	
 
 ---
 
+## Changes to Slash Commands
+/init produces STATE.md and ATTRACTOR.md files.
+
+---
+
 # Global File Variants
 
 If you have an AGENTS.md in the global area of the claurst install, it uses the global one first, if no global AGENTS.md then it defaults to project level next. 
