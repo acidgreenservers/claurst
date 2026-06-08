@@ -1,16 +1,16 @@
 # Project State — claurst
 
-## Topology Phase: Bridge (partial — one seam incomplete)
+## Topology Phase: Ceiling
 
 > Phase tracking: Floor = foundations | Bridge = integration/synthesis | Ceiling = final polish, release-ready
 
-We are in **Bridge phase** for the Framework Memory Subsystem. The plumbing is installed across 5 files in 3 crates and compiles clean. One consistency gap remains (every-turn content is loaded but not injected as a memory block — only file names are nudged).
+We are in **Ceiling phase** for the Framework Memory Subsystem. The Rust plumbing is complete and compiles clean. The surface-layer integration — README, docs, CLI commands, and markdown framework files — is aligned with the Harness-Subsystem Architecture defined in ATTRACTOR.md.
 
 ---
 
 ## Session Intent (2026-06-07)
 
-Integrate a markdown-based agent framework into the harness as an autonomic memory subsystem. The harness silently governs the agent by injecting framework files (AGENTS.md, AGENT.md, HEART.md, STATE.md, MEMORY.md, USER.md, BRAIN.md, ATTRACTOR.md) into the system prompt at specific delivery cadences — without the agent being aware of the delivery mechanics.
+Align the entire project surface — README, documentation, `/init` command, and STATE.md — to the Harness-Subsystem Architecture. The Claurst Harness using the AGENT framework at its core is now the project's identity statement across all user-facing material.
 
 ---
 
@@ -23,6 +23,7 @@ Integrate a markdown-based agent framework into the harness as an autonomic memo
 | System prompt injection is the integration seam — not tool calls, not MCP | ✅ |
 | Harness is "subconscious" — agent framework is "conscious executive" | ✅ (see ATTRACTOR.md) |
 | AGENTS.md, AGENT.md, USER.md cascade: global (~/.claurst/) → project ({root}/) | ✅ |
+| `/init` produces STATE.md + ATTRACTOR.md (not legacy AGENTS.md) | ✅ |
 
 ---
 
@@ -39,42 +40,38 @@ Every design decision must respect this boundary: add injection points to the ha
 
 ## Changes Made (this session)
 
-### New/Modified Source Files
-
-| File | Change | Crate |
-|------|--------|-------|
-| `src-rust/crates/core/src/claudemd.rs` | **Major rewrite.** Added `DeliveryMode` enum, `load_cascaded_file()` for global→project cascade, `load_all_memory_files()` returns `(session_start, every_turn)` vectors, `build_framework_identity()`, `build_memory_prompt()`, `build_periodic_nudge()`. Framework file registry split: cascaded (AGENTS.md, AGENT.md, USER.md) vs project-only (ATTRACTOR.md, BRAIN.md, HEART.md, MEMORY.md, STATE.md) | `claurst-core` |
-| `src-rust/crates/core/src/system_prompt.rs` | **Fields added to `SystemPromptOptions`:** `framework_identity`, `periodic_nudge_files`, `periodic_nudge`. Injection points: `<framework_identity>` in cacheable block, `<periodic_nudge>` in dynamic block | `claurst-core` |
-| `src-rust/crates/query/src/lib.rs` | **Fields added to `QueryConfig`:** `framework_identity`, `periodic_nudge_files`. Wired into `build_system_prompt()` | `claurst-query` |
-| `src-rust/crates/query/src/agent_tool.rs` | Added `framework_identity: String::new()`, `periodic_nudge_files: Vec::new()` to `QueryConfig` initializer (downstream break fix) | `claurst-query` |
-| `src-rust/crates/cli/src/main.rs` | Calls `load_all_memory_files(&cwd)`, wires `framework_identity` and `periodic_nudge_files` into `query_config`. Every-turn file names extracted for nudge mechanism | `claurst` |
-
-### New/Modified Markdown Files
+### Surface Alignment (docs/ + README.md)
 
 | File | Change |
 |------|--------|
-| `ATTRACTOR.md` | **Created.** Semantic anchor — harness/subconscious architecture definition |
-| `STATE.md` | **Rewritten.** Process document → comprehensive project state snapshot |
+| `README.md` | Architecture section heading + opening reframed to "This version of Claurst Harness has the AGENT Framework integrated into it" — transparent, no fluff |
+| `docs/index.md` | Entire architecture section rewritten with Conscious/Subconscious layer split, 8-file delivery table, topology inversion. Opening language aligned to transparent anchor |
+| `docs/agents.md` | Disambiguation callout added: separates runtime named agents from AGENT framework files |
+| `docs/advanced.md` | "AGENTS.md hierarchical memory" section completely rewritten → "AGENT framework files" with 8-file registry, delivery modes, cascade, CLAUDE.md deprecation |
+| `docs/configuration.md` | "AGENTS.md Memory Files" section completely rewritten → "AGENT Framework Files" with same 8-file table |
+| `docs/commands.md` | `/init` entry updated to describe STATE.md + ATTRACTOR.md creation |
+| `docs/hooks.md` | `InstructionsLoaded` event description updated ("CLAUDE.md" → "AGENT framework file") |
+| `docs/plugins.md` | `InstructionsLoaded` event description updated ("CLAUDE.md" → "AGENT framework files") |
 
-### Blast Radius
+### Code Changes
 
-- **Direct (Rust):** 5 files in 3 crates (`claurst-core`, `claurst-query`, `claurst`)
-- **Direct (Markdown):** 2 files in project root (`ATTRACTOR.md`, `STATE.md`)
-- **Indirect:** Zero — no existing behavior modified, purely additive
-- **Build:** `cargo check --workspace` passes clean (zero errors, zero warnings)
+| File | Change |
+|------|--------|
+| `src-rust/crates/commands/src/lib.rs` | `/init` command rewritten: produces STATE.md + ATTRACTOR.md templates. No longer creates AGENTS.md |
+| `src-rust/crates/tui/src/app.rs` | `/init` slash-command description changed to "Initialize STATE.md and ATTRACTOR.md for this project" |
 
-### Framework File Registry
+### Framework File Status
 
-| File | Delivery Mode | Cascade | Scope |
-|------|--------------|---------|-------|
-| AGENTS.md | SessionStart | ✅ global → project | User / Project |
-| AGENT.md | SessionStart + EveryTurn | ✅ global → project | User / Project |
-| USER.md | EveryTurn | ✅ global → project | User / Project |
-| ATTRACTOR.md | SessionStart | — | Project |
-| BRAIN.md | SessionStart | — | Project |
-| HEART.md | SessionStart | — | Project |
-| MEMORY.md | EveryTurn | — | Project |
-| STATE.md | EveryTurn | — | Project |
+| File | Delivery Mode | Cascade | Scope | Created By |
+|------|--------------|---------|-------|------------|
+| AGENTS.md | SessionStart | ✅ global → project | User / Project | User |
+| AGENT.md | SessionStart + EveryTurn | ✅ global → project | User / Project | User |
+| USER.md | EveryTurn | ✅ global → project | User / Project | User |
+| ATTRACTOR.md | SessionStart | — | Project | `/init` or user |
+| BRAIN.md | SessionStart | — | Project | User |
+| HEART.md | SessionStart | — | Project | User |
+| MEMORY.md | EveryTurn | — | Project | User |
+| STATE.md | EveryTurn | — | Project | `/init` or user |
 
 ---
 
@@ -94,6 +91,7 @@ Every design decision must respect this boundary: add injection points to the ha
 
 ## Next Topological Moves
 
-1. Verify end-to-end: start a session, inspect `--dump-system-prompt` for `<framework_identity>` content
-2. Optionally wire every-turn file content into the dynamic `<memory>` block (future enhancement)
-3. Commit when logical unit is complete
+1. Wire every-turn file content into the dynamic `<memory>` block (future enhancement)
+2. Remove legacy CLAUDE.md references from remaining spec/ directory files
+3. Verify end-to-end: start a session with `--dump-system-prompt` to confirm `<framework_identity>` and `<periodic_nudge>` injection
+4. Commit logical unit

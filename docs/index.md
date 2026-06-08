@@ -1,10 +1,12 @@
 <div align="center">
 
-# Claurst
+# Claurst Using the AGENT Framework
 
 <img src="../public/Ship.png" alt="Rustle on the ship" width="350" />
 
 Claurst is a high-performance Rust reimplementation of Claude Code — a terminal-native AI coding agent with streaming responses, 40+ built-in tools, 15+ LLM provider integrations, a full ratatui TUI, and an extensible plugin system.
+
+The AGENT Framewor is a cognition framework for agents that mirrrors human cognition, and allows the agent to reason better, and the harness steps out of the way.
 
 **Version:** 0.1.4 (Beta) · **License:** GPL-3.0 · [GitHub](https://github.com/Kuberwastaken/claurst)
 
