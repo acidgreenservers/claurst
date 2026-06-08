@@ -563,16 +563,16 @@ async fn main() -> anyhow::Result<()> {
     let system_prompt = system_parts.join("\n\n");
 
     // Load framework files (session-start + every-turn)
-    let (session_start_files, every_turn_files) =
+    let (session_start_files, _every_turn_files) =
         claurst_core::claudemd::load_all_memory_files(&cwd);
     let framework_identity =
         claurst_core::claudemd::build_framework_identity(&session_start_files);
-    let periodic_nudge_files: Vec<String> = every_turn_files
-        .iter()
-        .filter_map(|f| f.path.file_name())
-        .filter_map(|n| n.to_str())
-        .map(|s| s.to_string())
-        .collect();
+    let periodic_nudge_files: Vec<String> = vec![
+        "AGENT.md".into(),
+        "AGENTS.md".into(),
+        "STATE.md".into(),
+        "ATTRACTOR.md".into(),
+    ];
 
     // Determine mode early (needed for auth error handling and permission handler selection).
     let is_headless = cli.print || cli.prompt.is_some();
