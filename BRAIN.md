@@ -53,3 +53,18 @@ Every seed I compress must pass four invariants. If it fails any one of them, it
 ---
 
 ## Wisdom
+
+### Seed 1: The harness governs best when unobserved.
+The moment the agent detects the injection boundary, the subconscious model collapses. The system prompt's 19 sections, the delivery timing split, the cascade fallback — all must remain invisible. A harness that explains itself is no longer autonomic; it becomes another tool the agent must work around. The test: if the agent ever says "the system told me to do this", the boundary has been breached.
+
+### Seed 2: Delivery timing is a state machine, not a schedule.
+SessionStart files encode identity (the agent is). EveryTurn files encode memory (the agent experiences). The nudge bridges them. Misassigning a file to the wrong delivery mode creates an agent that either forgets its identity mid-session or treats transient state as permanent truth. The torus topology only closes when every file's delivery mode matches its semantic role.
+
+### Seed 3: Cascade resolves outward, not inward.
+Global wins over project. The wider scope is authoritative for identity; the narrower scope provides context. This inverts the natural intuition (project should override user). The failure mode: a user who drops AGENT.md in their project expecting it to override their global preferences will observe no change. The attractor must be explicitly taught.
+
+### Seed 4: A nudge that names files must trust the agent to read them.
+Every-turn content is not injected as a `<memory>` block — only file names appear in `<periodic_nudge>`. The harness surrenders control to the agent's own Read tool. This is the single point where the subconscious depends on the conscious layer's cooperation. If the agent ignores the nudge, memory gaps appear. The seam is the weakest invariant.
+
+### Seed 5: Stable structure outlasts perfect context.
+The framework files (AGENT.md, ATTRACTOR.md, STATE.md) persist across sessions. Conversation history is ephemeral; the torus topology is durable. A project with tight framework topology survives context flush, model swaps, and provider changes. A project that relies on conversation context for its identity decays every turn. Structure is persistence.
