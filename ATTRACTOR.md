@@ -45,20 +45,22 @@ Every pattern inference must respect this boundary:
 
 File             DeliveryMode    Scope
 ─────            ────────────    ─────
-AGENT.md         SessionStart + EveryTurn    Project (.claurst/) < SENT AT SESSION START **AND** AT EVERY TURN
-AGENTS.md        SessionStart       Project (root) — legacy fallback < SENT AT SESSION START ONLY
-ATTRACTOR.md     SessionStart    Project (.claurst/) < SENT AT SESSION START ONLY
+AGENT.md         SessionStart + EveryTurn + Periodic Nudge (15 Turns)    Project (.claurst/) < SENT AT SESSION START **AND** AT EVERY TURN
+AGENTS.md        SessionStart + Periodic Nudge (15 Turns)    Project (root) — legacy fallback < SENT AT SESSION START ONLY
+ATTRACTOR.md     SessionStart + Periodic Nudge (15 Turns)   Project (.claurst/) < SENT AT SESSION START ONLY
 BRAIN.md         SessionStart    Project (.claurst/) < sENT AT SESSION START ONLY
-CLAUDE.md        Nill       Project (root) — legacy fallback < REMOVED FROM HARNESS
+CLAUDE.md        Nill            Project (root) — legacy fallback < REMOVED FROM HARNESS
 HEART.md         SessionStart    Project (.claurst/) < SENT AT SESSION START ONLY
 MEMORY.md        SessionStart + EveryTurn       Project (.claurst/) < SENT EVERY TURN
-STATE.md         SessionStart + EveryTurn    Project (.claurst/)< SENT EVERY TURN
+STATE.md         SessionStart + EveryTurn + Periodic Nudge (15 Turns)   Project (.claurst/)< SENT EVERY TURN
 USER.md          SessionStart + EveryTurn       User (~/.claurst/) < SENT EVERY TURN
+
+- [ ] Add USER.md to 15 turn periodic nudge with AGENT, AGENT, STATE and ATTRACTOR 
 
 # Nudges and Reminders for Anchoring
 
 **Semantic Context Anchoring**
-Periodic Nudge — "Re-read these files to refresh context" — every ~10 turns	system_prompt.rs — wrapped in <periodic_nudge>	❌ Generated
+- [x] Periodic Nudge — "Re-read these (AGENT.md, AGENTS.md, STATE.md, STTRACTOR.md) files to refresh context" — every ~15 turns	system_prompt.rs — wrapped in <periodic_nudge>	❌ Generated
 
 ---
 
@@ -72,7 +74,7 @@ Periodic Nudge — "Re-read these files to refresh context" — every ~10 turns	
 ---
 
 ## Changes to Slash Commands
-/init produces STATE.md and ATTRACTOR.md files.
+- [x] /init produces STATE.md and ATTRACTOR.md files. - Confirmed working
 
 ---
 
