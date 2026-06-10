@@ -82,7 +82,9 @@ It's fast, it's memory-efficient, it's yours to run however you want, and there'
 ---
 
 > [!IMPORTANT]
-> **Claurst is now officially in Beta (v0.1.4).** The core agent, multi-provider routing, and TUI are stable enough for daily driving — expect rough edges around experimental features (flagged below). Bug reports and PRs welcome.
+> **Claurst Harness** is now officially in Beta (v0.1.4). The core agent, multi-provider routing, and TUI are stable enough for daily driving — expect rough edges around experimental features (flagged below). Bug reports and PRs welcome.
+>
+> **The Claurst Harness with the AGENT framework embedded is in Alpha (v0.1.2).** The harness version is retained within the actual harness so all files remain compatible with the upstream Claurst harness. The AGENT framework is mostly system prompt changes, and light additions to nudges and timings. We will explicitly communicate if/when the harness decides to start taking routes different enough to justify changing the compatibility with the upstream.
 
 > [!NOTE]
 > **Recent Updates:**
