@@ -888,6 +888,13 @@ pub async fn run_query_loop(
                 }
             }
 
+            // Periodic framework nudge every 15 turns.
+            // Mirrors the todo nudge pattern above: clear the file list so
+            // build_periodic_nudge returns None on off-turns.
+            if turn > 0 && turn % 15 != 0 {
+                patched.periodic_nudge_files.clear();
+            }
+
             build_system_prompt(&patched)
         };
 
