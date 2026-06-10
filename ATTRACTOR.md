@@ -25,7 +25,7 @@ Every pattern inference must respect this boundary:
 | File discovery | `claudemd.rs` — scans project root, `~/.claurst/`, `~/.claurst/rules/` |
 | Delivery timing | `DeliveryMode::SessionStart` (once, cacheable) vs `DeliveryMode::EveryTurn` (dynamic) |
 | Prompt assembly | `system_prompt.rs` — injects `<framework_identity>` and `<periodic_nudge>` blocks |
-| Context refresh | Periodic nudge every ~10 turns — lists files to re-read |
+| Context refresh | Periodic nudge every 15 turns — lists files to re-read |
 | Boundary control | Cached vs dynamic prompt blocks — the agent never sees the split |
 
 ## Conscious Functions (Agent Framework Responsibilities)
@@ -45,22 +45,22 @@ Every pattern inference must respect this boundary:
 
 File             DeliveryMode    Scope
 ─────            ────────────    ─────
-AGENT.md         SessionStart + EveryTurn + Periodic Nudge (15 Turns)    Project (.claurst/) < SENT AT SESSION START **AND** AT EVERY TURN
-AGENTS.md        SessionStart + Periodic Nudge (15 Turns)    Project (root) — legacy fallback < SENT AT SESSION START ONLY
-ATTRACTOR.md     SessionStart + Periodic Nudge (15 Turns)   Project (.claurst/) < SENT AT SESSION START ONLY
+AGENT.md         SessionStart + EveryTurn + Periodic Nudge (every 15 turns)    Project (.claurst/) < SENT AT SESSION START **AND** AT EVERY TURN
+AGENTS.md        SessionStart + Periodic Nudge (every 15 turns)    Project (root) — legacy fallback < SENT AT SESSION START ONLY
+ATTRACTOR.md     SessionStart + Periodic Nudge (every 15 turns)   Project (.claurst/) < SENT AT SESSION START ONLY
 BRAIN.md         SessionStart    Project (.claurst/) < sENT AT SESSION START ONLY
 CLAUDE.md        Nill            Project (root) — legacy fallback < REMOVED FROM HARNESS
 HEART.md         SessionStart    Project (.claurst/) < SENT AT SESSION START ONLY
-MEMORY.md        SessionStart + EveryTurn       Project (.claurst/) < SENT EVERY TURN
-STATE.md         SessionStart + EveryTurn + Periodic Nudge (15 Turns)   Project (.claurst/)< SENT EVERY TURN
+MEMORY.md        EveryTurn       Project (.claurst/) < SENT EVERY TURN
+STATE.md         EveryTurn + Periodic Nudge (every 15 turns)   Project (.claurst/)< SENT EVERY TURN
 USER.md          SessionStart + EveryTurn       User (~/.claurst/) < SENT EVERY TURN
 
-- [ ] Add USER.md to 15 turn periodic nudge with AGENT, AGENT, STATE and ATTRACTOR 
+- [ ] Add USER.md to periodic nudge with AGENT, AGENTS, STATE and ATTRACTOR 
 
 # Nudges and Reminders for Anchoring
 
 **Semantic Context Anchoring**
-- [x] Periodic Nudge — "Re-read these (AGENT.md, AGENTS.md, STATE.md, STTRACTOR.md) files to refresh context" — every ~15 turns	system_prompt.rs — wrapped in <periodic_nudge>	❌ Generated
+- [x] Periodic Nudge — "Re-read these (AGENT.md, AGENTS.md, STATE.md, ATTRACTOR.md) files to refresh context" — Every turn	system_prompt.rs — wrapped in <periodic_nudge>	❌ Generated
 
 ---
 
@@ -194,7 +194,7 @@ The final prompt delivered to the LLM is assembled in two blocks split by a dyna
 | 13 | **Memory Content** — from memdir (persistent notes across sessions) | `system_prompt.rs` — wrapped in `<memory>` | ❌ Invisible |
 | 14 | **Active Goal Addendum** — injected when a goal is running | `system_prompt.rs` — raw text block | ❌ Generated |
 | 15 | **Appended System Prompt** — `--append-system-prompt` flag | `system_prompt.rs` — raw text | ✅ User wrote it |
-| 16 | **Periodic Nudge** — "Re-read these files to refresh context" — every ~10 turns | `system_prompt.rs` — wrapped in `<periodic_nudge>` | ❌ Generated |
+| 16 | **Periodic Nudge** — "Re-read these files to refresh context" — every 15 turns | `system_prompt.rs` — wrapped in `<periodic_nudge>` | ❌ Generated |
 
 ### Also Pre-Appended Before Assembly
 

@@ -6,7 +6,7 @@
 
 Claurst is a high-performance Rust reimplementation of Claude Code — a terminal-native AI coding agent with streaming responses, 40+ built-in tools, 15+ LLM provider integrations, a full ratatui TUI, and an extensible plugin system.
 
-The AGENT Framewor is a cognition framework for agents that mirrrors human cognition, and allows the agent to reason better, and the harness steps out of the way.
+The AGENT Framework is a cognition framework for agents that mirrors human cognition, and allows the agent to reason better, and the harness steps out of the way.
 
 **Version:** 0.1.4 (Beta) · **License:** GPL-3.0 · [GitHub](https://github.com/Kuberwastaken/claurst)
 
@@ -23,7 +23,7 @@ This version of Claurst Harness has the AGENT Framework integrated into it. The 
 The harness manages everything beneath the agent's awareness:
 
 - **File discovery** — scans `~/.claurst/` and project root for framework files at startup
-- **Delivery timing** — session-start files go into the cacheable prompt block (eligible for Anthropic prompt caching); every-turn files are nudged for re-read every ~10 turns
+- **Delivery timing** — session-start files go into the cacheable prompt block (eligible for Anthropic prompt caching); every-turn files are nudged for re-read every 15 turns
 - **Cascade resolution** — `AGENTS.md`, `AGENT.md`, and `USER.md` support global (`~/.claurst/`) → project (`{root}/`) fallback
 - **Prompt assembly** — 19 distinct instruction sections are assembled into the system prompt; only 3 are user-authored. The rest are harness-injected
 - **Context refresh** — a periodic nudge tells the agent which files to re-read, keeping state fresh without manual prompting
@@ -34,14 +34,14 @@ The agent's runtime behavior, identity, and values are dictated by **markdown fr
 
 | File | Role | Delivery |
 |------|------|----------|
-| `AGENTS.md` | Project identity & role | Session start (cacheable) |
-| `AGENT.md` | Agent persona & behavior | Session start + every turn |
-| `ATTRACTOR.md` | Semantic anchor for inference | Session start |
-| `BRAIN.md` | Reasoning patterns & rules | Session start |
-| `HEART.md` | Core values & purpose | Session start |
-| `MEMORY.md` | Persistent cross-session state | Every turn |
-| `STATE.md` | Current project state awareness | Every turn |
-| `USER.md` | User alignment & preferences | Every turn (global→project) |
+| AGENTS.md | Project identity & role | Session start |
+| AGENT.md | Agent persona & behavior | Session start + turn |
+| USER.md | User alignment & preferences | Every turn |
+| ATTRACTOR.md | Semantic anchor for inference | Session start |
+| BRAIN.md | Reasoning patterns & rules | Session start |
+| HEART.md | Core values & purpose | Session start |
+| MEMORY.md | Persistent cross-session state | Every turn |
+| STATE.md | Current project state awareness | Every turn |
 
 ### How It Works
 
@@ -226,6 +226,7 @@ See [Slash Commands](commands) for the complete reference.
 ## Next steps
 
 - [Installation](installation) — download, build from source, system requirements
+- [AGENT Framework](agent-framework) — cognition architecture, autonomic functions, strange loop
 - [Authentication](auth) — API keys and OAuth
 - [Configuration](configuration) — settings.json reference
 - [Slash Commands](commands) — all 70+ commands
