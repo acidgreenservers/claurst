@@ -13,6 +13,9 @@ refs/
 # Agents
 .agent/
 
+# Cline
+.clinerules/
+
 # Claurst
 .claurst/
 

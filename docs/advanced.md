@@ -522,7 +522,7 @@ Claurst reads markdown framework files from the filesystem at startup. These fil
 | `STATE.md` | Current project state awareness | EveryTurn | — |
 
 - **SessionStart** files are injected once into the cacheable prompt block (eligible for Anthropic prompt caching).
-- **EveryTurn** files are injected every turn and the agent is nudged ~every 10 turns to re-read them.
+- **EveryTurn** files are injected every turn and the agent is nudged every 15 turns to re-read them.
 - **Cascaded files** (`AGENTS.md`, `AGENT.md`, `USER.md`) check `~/.claurst/` first, then the project root. The global file wins if present.
 - `CLAUDE.md` is deprecated and no longer loaded by the harness.
 
