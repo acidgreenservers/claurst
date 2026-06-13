@@ -203,6 +203,7 @@ pub struct CompactCommand;
 pub struct CostCommand;
 pub struct ExitCommand;
 pub struct ModelCommand;
+pub struct BudgetCommand;
 pub struct ConfigCommand;
 pub struct ColorCommand;
 pub struct VersionCommand;
@@ -777,6 +778,57 @@ impl SlashCommand for ModelCommand {
                 new_config.provider = Some(provider.to_string());
             }
             CommandResult::ConfigChangeMessage(new_config, confirmation)
+        }
+    }
+}
+
+// ---- /budget -------------------------------------------------------------
+
+#[async_trait]
+impl SlashCommand for BudgetCommand {
+    fn name(&self) -> &str { "budget" }
+    fn description(&self) -> &str { "Show or change the output token budget per response" }
+    fn help(&self) -> &str {
+        "Usage: /budget [<token-count>]\n\n\
+         Without arguments, shows the current output token budget.\n\n\
+         With a number, sets the output token budget for this session.\n\
+         The maximum is 65,536 tokens.\n\n\
+         Examples:\n\
+           /budget            — show current budget\n\
+           /budget 65536      — set to 65k tokens\n\
+           /budget 32000      — set to 32k tokens"
+    }
+
+    async fn execute(&self, args: &str, ctx: &mut CommandContext) -> CommandResult {
+        let args = args.trim();
+        if args.is_empty() {
+            CommandResult::Message(format!(
+                "Current output token budget: {}",
+                ctx.config.effective_max_tokens()
+            ))
+        } else {
+            let tokens: u32 = args.parse().unwrap_or(0);
+            if tokens == 0 {
+                return CommandResult::Error(
+                    "Usage: /budget <token-count> (e.g. /budget 65536)".to_string(),
+                );
+            }
+            let capped = tokens.min(claurst_core::constants::MAX_TOKENS_HARD_LIMIT);
+            if capped != tokens {
+                let mut new_config = ctx.config.clone();
+                new_config.max_tokens = Some(capped);
+                CommandResult::ConfigChangeMessage(
+                    new_config,
+                    format!("Budget capped to {} tokens (hard limit: {})", capped, claurst_core::constants::MAX_TOKENS_HARD_LIMIT),
+                )
+            } else {
+                let mut new_config = ctx.config.clone();
+                new_config.max_tokens = Some(capped);
+                CommandResult::ConfigChangeMessage(
+                    new_config,
+                    format!("Output token budget set to {}", capped),
+                )
+            }
         }
     }
 }
@@ -8860,6 +8912,7 @@ pub fn all_commands() -> Vec<Box<dyn SlashCommand>> {
         Box::new(CostCommand),
         Box::new(ExitCommand),
         Box::new(ModelCommand),
+        Box::new(BudgetCommand),
         Box::new(ConfigCommand),
         Box::new(ColorCommand),
         Box::new(PluginCommand),

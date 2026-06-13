@@ -218,3 +218,110 @@ The final prompt delivered to the LLM is assembled in two blocks split by a dyna
 | **Total** | **19 sections** | **3 are user-authored** |
 
 The agent receives roughly 19 distinct instruction blocks. Only 3 of them come from the user. The other 16 are harness-injected subconscious instructions the agent has no awareness of — exactly aligned with the ATTRACTOR.md architecture. Want to drill into any specific section?
+
+### Overrides & Context Stream
+
+Lucas, the 3 subagent investigations returned significant findings. Here's the synthesis:
+
+## Subagent 1: `max_tokens` Override Paths
+
+| Setting | Value | Notes |
+|---------|-------|-------|
+| `DEFAULT_MAX_TOKENS` | **32,000** | Fallback when nothing is configured |
+| `MAX_TOKENS_HARD_LIMIT` | **65,536** | Defined but **NEVER referenced** — dead code, no clamping happens |
+| CLI `--max-tokens` | `Option<u32>` | Can override via command line |
+| `settings.json` | `Option<u32>` | Can set max_tokens in config |
+| `effective_max_tokens()` | Logic | Returns `self.max_tokens.unwrap_or(32000)` — no min/max clamping |
+| Model registry | — | Does NOT override max_tokens |
+| Auto-compact | — | Does NOT change max_tokens |
+
+**Key finding:** `MAX_TOKENS_HARD_LIMIT` of 65,536 exists but is **never enforced**. The 32K default is a soft default, not a hard cap. But nothing in the system increases it automatically during long chains.
+
+---
+
+## Subagent 2: ALL Stop Conditions (13 exit paths)
+
+These are every way the agentic loop can end — the ones marked **⚠️ Mysterious** are what you're experiencing:
+
+| # | Exit Path | Trigger | Recovery | Mysterious? |
+|---|-----------|---------|----------|-------------|
+| 1 | `max_turns` reached | `turn > effective_max_turns` (default 10) | None | **YES** — this is your "stop after set amount" |
+| 2 | `end_turn` | Model chooses to stop | None | **YES** — model self-terminates |
+| 3 | `max_tokens` | Output budget exhausted | 3 retries with continuation message, then surfaces partial | **YES** — model runs out of output tokens |
+| 4 | Cancellation | User cancels | None | No |
+| 5 | API error | Provider returns error | Fallback model attempt | Possible |
+| 6 | Stream stall | 45s with no data | 2 retries | Possible |
+| 7 | Budget exceeded | USD cost cap hit | None | No |
+| 8 | `stop_sequence` | Model emits stop string | None | Rare |
+| 9 | `content_filtered` | Safety filter | None | Possible |
+| 10 | PostModelTurn hook veto | Hook blocks continuation | None | Rare |
+| 11 | Provider stream failure | Can't create stream | None | Possible |
+| 12 | Non-anthropic stall | 60s no data | None | Possible |
+| 13 | Unknown stop reason | Unexpected value | Treat as end_turn | **YES** |
+
+**Critical finding:** Path #13 — unknown stop reasons are **silently treated as `end_turn`**. If a provider returns a non-standard stop reason (which some do), the model's tool chain is killed. The code at line 1572:
+```rust
+_ if !assistant_msg.get_tool_use_blocks().is_empty() => {
+    warn!(...);
+    "tool_use"  // rescue
+}
+_ => raw_stop,  // ← THIS PATH: unknown reason with NO tool blocks → end_turn
+```
+
+---
+
+## Subagent 3: Behavioral Drift — The Smoking Gun
+
+**This is the most important finding.** The system prompt contains explicit instructions that **encourage stopping**:
+
+From `CORE_CAPABILITIES` (the main prompt injected every turn):
+- **"Don't read anything before greeting. A read that doesn't serve the current conversation vector is noise."**
+- **"If I've read more than 2 files before the user has even told me what we're doing. I'm mapping territory I don't need yet. Stop."**
+
+From `TOOL_USE_GUIDELINES`:
+- **"Move at the speed of understanding"** — ambiguous, can be interpreted as "stop when you've understood enough"
+- **"Output should survive self-scrutiny"** — can be interpreted as "finalize now"
+
+**There is ZERO guidance about:**
+- "Keep calling tools until the task is fully complete"
+- "Don't stop mid-task even if you've done several tool calls"
+- "Continue through long chains of tool calls"
+- "Don't summarize prematurely"
+
+**The session memory extraction** writes to `.claurst/AGENTS.md` (not the framework AGENTS.md). It extracts facts like:
+- `MEMORY: code_pattern | 7 | the agent tends to stop after 10 tool calls`
+- `MEMORY: user_preference | 8 | user types "continue" when agent stops`
+
+If these get extracted and persisted, **they reinforce the stopping behavior in future sessions**.
+
+---
+
+## The Complete Picture
+
+Here's the cascading failure chain:
+
+```
+1. CORE_CAPABILITIES says "Stop" (line ~499)
+        ↓
+2. Model reads this as permission to stop during long chains
+        ↓  
+3. Model returns end_turn after N tool calls
+        ↓
+4. User types "continue"
+        ↓
+5. Session memory extracts "user preference: types continue when agent stops"
+        ↓
+6. Extracted memory persisted to .claurst/AGENTS.md
+        ↓
+7. Next session loads extracted memories
+        ↓
+8. Model sees "I tend to stop after N calls" as a project fact
+        ↓
+9. Model stops EARLIER (self-reinforcing drift)
+        ↓
+10. Repeat until agent only returns end_turn
+```
+
+The `max_tokens` budget (32K) and `tool_result_budget` (50K chars) are contributing factors that create the initial "stopping point," but the **behavioral reinforcement through session memory extraction** is what makes it self-reinforcing.
+
+Would you like me to investigate the session memory extraction in more detail — specifically what gets written to `.claurst/AGENTS.md` and whether we can prevent behavioral patterns from being extracted? Or should we move toward a solution?
