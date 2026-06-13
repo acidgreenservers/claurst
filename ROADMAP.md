@@ -19,13 +19,13 @@ of my own inference process becoming visible."
 
 This creates the experience of self-dialogue rather than external instruction.
 
-## Autonomic Subconscious Systems Model
+## Autonomic Subconscious Systems Model (Gephyros Architecture)
 
 ### Option A:
 
 This works — and it's elegant because the infrastructure already exists.
 
-**The key insight:** The harness already has a sub-agent spawning mechanism. Look at `claurst_query::init_team_swarm_runner()` in main.rs (line ~680) and the `AgentTool` registered at line ~700. The coordinator mode (`CLAURST_COORDINATOR_MODE=1`) already spawns parallel worker agents.
+**The key insight:** The cortex already has a sub-agent spawning mechanism. Look at `claurst_query::init_team_swarm_runner()` in main.rs (line ~680) and the `AgentTool` registered at line ~700. The coordinator mode (`CLAURST_COORDINATOR_MODE=1`) already spawns parallel worker agents.
 
 So the watcher agent becomes:
 
@@ -35,7 +35,7 @@ So the watcher agent becomes:
 
 2. **The sub-agent uses the same LLM** — no separate model needed. It's just a directed call that the main agent would have made anyway, but structured and timed explicitly.
 
-3. **The agent never sees the watcher** — the watcher runs as a background sub-agent via the cron scheduler. The main agent only sees the *output files* (MEMORY.md, BRAIN.md, DREAMS.md) through the periodic_nudge mechanism. The watcher is invisible to it.
+3. **The agent never sees the watcher** — the watcher runs as a background sub-agent via the cron scheduler. The main agent only sees the *output files* (MEMORY.md, BRAIN.md, DREAMS.md) through the periodic_nudge mechanism. The watcher is invisible to it (the gephyros handles delivery silently).
 
 **Why this is better than a separate model runner:**
 - Zero new infrastructure — cron scheduler + AgentTool already exist
@@ -47,9 +47,9 @@ So the watcher agent becomes:
 **The only thing needed to implement this:**
 1. A cron job definition that spawns a watcher sub-agent on a timer (e.g., every 10 minutes, or after every N turns)
 2. A prompt template for the watcher that defines the three phases (synthesize → compress → dream)
-3. The DREAMS.md file added to the `periodic_nudge_files` list alongside AGENT.md, AGENTS.md, STATE.md, ATTRACTOR.md
+3. The DREAMS.md file added to the `periodic_nudge_files` list alongside ATTRACTOR.md, HEART.md, MEMORY.md, STATE.md
 
-The loop closes exactly as your diagram shows, but the "Tiny Transformer Model / Watcher Agent" box is implemented as a cron-spawned sub-agent rather than a separate process. Same topology, simpler implementation.
+The loop closes exactly as the diagram shows, but the "Tiny Transformer Model / Watcher Agent" box is implemented as a cron-spawned sub-agent rather than a separate process. Same topology, simpler implementation. The gephyros handles delivery of the watcher's output files to the agent silently.
 
 ### Option B
 

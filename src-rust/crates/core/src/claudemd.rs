@@ -247,12 +247,11 @@ fn load_scope_files(dir: &Path, scope: MemoryScope, files: &mut Vec<MemoryFileIn
         MemoryScope::Project => &[],
 
         // Local scope ({project_root}/.claurst/): project-only framework files.
-        // Cascaded files (AGENT.md, AGENTS.md, USER.md) are not in this table.
+        // Cascaded files (AGENT.md, AGENTS.md, USER.md, BRAIN.md) are not in this table.
         MemoryScope::Local => &[
             FrameworkFile { name: "ATTRACTOR.md", delivery: DeliveryMode::SessionStart },
-            FrameworkFile { name: "BRAIN.md", delivery: DeliveryMode::SessionStart },
             FrameworkFile { name: "HEART.md", delivery: DeliveryMode::SessionStart },
-            FrameworkFile { name: "MEMORY.md", delivery: DeliveryMode::EveryTurn },
+            FrameworkFile { name: "MEMORY.md", delivery: DeliveryMode::SessionStart },
             FrameworkFile { name: "STATE.md", delivery: DeliveryMode::EveryTurn },
         ],
     };
@@ -269,8 +268,8 @@ fn load_scope_files(dir: &Path, scope: MemoryScope, files: &mut Vec<MemoryFileIn
 
 /// Cascade load: try global (~/.claurst/name) first, fall back to project ({root}/name).
 ///
-/// Used for AGENTS.md, AGENT.md, and USER.md — the three framework files that
-/// support a global override. Global files get `MemoryScope::User`; project
+/// Used for AGENTS.md, AGENT.md, USER.md, and BRAIN.md — the four framework files
+/// that support a global override. Global files get `MemoryScope::User`; project
 /// fallback files get `MemoryScope::Project`.
 fn load_cascaded_file(
     global_dir: &Path,
@@ -297,10 +296,10 @@ fn load_cascaded_file(
 ///
 /// Loading order:
 ///   1. Managed: ~/.claurst/rules/*.md (EveryTurn)
-///   2. Cascaded SessionStart: AGENTS.md, AGENT.md (global → project)
-///   3. Project-only SessionStart: ATTRACTOR.md, BRAIN.md, HEART.md
-///   4. Cascaded EveryTurn: AGENT.md, USER.md (global → project)
-///   5. Project-only EveryTurn: MEMORY.md, STATE.md
+///   2. Cascaded SessionStart: AGENTS.md, AGENT.md, USER.md, BRAIN.md (global → project)
+///   3. Project-only SessionStart: ATTRACTOR.md, HEART.md, MEMORY.md
+///   4. EveryTurn duplicates: ATTRACTOR.md, HEART.md, MEMORY.md (SessionStart + EveryTurn)
+///   5. Project-only EveryTurn: STATE.md
 pub fn load_all_memory_files(
     project_root: &Path,
 ) -> (Vec<MemoryFileInfo>, Vec<MemoryFileInfo>) {
@@ -327,23 +326,19 @@ pub fn load_all_memory_files(
 
         let global_dir = home.join(".claurst");
 
-        // 2. Cascaded SessionStart: AGENTS.md, AGENT.md (global → project)
-        if let Some(f) = load_cascaded_file(
-            &global_dir, project_root, "AGENTS.md", DeliveryMode::SessionStart,
-        ) {
-            all.push(f);
-        }
-        if let Some(f) = load_cascaded_file(
-            &global_dir, project_root, "AGENT.md", DeliveryMode::SessionStart,
-        ) {
-            all.push(f);
+        // 2. Cascaded SessionStart: AGENTS.md, AGENT.md, USER.md, BRAIN.md (global → project)
+        for name in &["AGENTS.md", "AGENT.md", "USER.md", "BRAIN.md"] {
+            if let Some(f) = load_cascaded_file(
+                &global_dir, project_root, name, DeliveryMode::SessionStart,
+            ) {
+                all.push(f);
+            }
         }
 
-        // 3. Project-only SessionStart: ATTRACTOR.md, BRAIN.md, HEART.md
+        // 3. Project-only SessionStart: ATTRACTOR.md, HEART.md, MEMORY.md
         load_scope_files(&project_root.join(".claurst"), MemoryScope::Local, &mut all);
         // Also load project-root copies of the project-only session-start files
-        // (they live in the project root, not .claurst/).
-        for name in &["ATTRACTOR.md", "BRAIN.md", "HEART.md"] {
+        for name in &["ATTRACTOR.md", "HEART.md", "MEMORY.md"] {
             let path = project_root.join(name);
             if path.exists() {
                 if let Some(f) = load_memory_file(&path, MemoryScope::Project, DeliveryMode::SessionStart) {
@@ -352,25 +347,33 @@ pub fn load_all_memory_files(
             }
         }
 
-        // 4. Cascaded EveryTurn: AGENT.md, USER.md (global → project)
-        if let Some(f) = load_cascaded_file(
-            &global_dir, project_root, "AGENT.md", DeliveryMode::EveryTurn,
-        ) {
-            all.push(f);
-        }
-        if let Some(f) = load_cascaded_file(
-            &global_dir, project_root, "USER.md", DeliveryMode::EveryTurn,
-        ) {
-            all.push(f);
-        }
-
-        // 5. Project-only EveryTurn: MEMORY.md, STATE.md
-        for name in &["MEMORY.md", "STATE.md"] {
-            let path = project_root.join(name);
-            if path.exists() {
-                if let Some(f) = load_memory_file(&path, MemoryScope::Project, DeliveryMode::EveryTurn) {
+        // 4. EveryTurn duplicates for SessionStart + EveryTurn files.
+        //    ATTRACTOR.md, HEART.md, MEMORY.md are already loaded above with
+        //    SessionStart delivery (injected into <framework_identity>). Loading
+        //    them again with EveryTurn delivery ensures their names appear in
+        //    the periodic nudge file list for agent re-reading.
+        for name in &["ATTRACTOR.md", "HEART.md", "MEMORY.md"] {
+            // Check .claurst/ first
+            let local_path = project_root.join(".claurst").join(name);
+            if local_path.exists() {
+                if let Some(f) = load_memory_file(&local_path, MemoryScope::Local, DeliveryMode::EveryTurn) {
                     all.push(f);
                 }
+            }
+            // Then project root
+            let root_path = project_root.join(name);
+            if root_path.exists() {
+                if let Some(f) = load_memory_file(&root_path, MemoryScope::Project, DeliveryMode::EveryTurn) {
+                    all.push(f);
+                }
+            }
+        }
+
+        // 5. Project-only EveryTurn: STATE.md
+        let state_path = project_root.join("STATE.md");
+        if state_path.exists() {
+            if let Some(f) = load_memory_file(&state_path, MemoryScope::Project, DeliveryMode::EveryTurn) {
+                all.push(f);
             }
         }
     }
@@ -466,16 +469,16 @@ mod tests {
         std::fs::write(local.join("MEMORY.md"), "memory content").unwrap();
 
         let (session_start, every_turn) = load_all_memory_files(tmp.path());
-        // AGENT.md appears in both (SessionStart + EveryTurn)
-        // HEART.md is SessionStart only
-        // MEMORY.md is EveryTurn only
+        // AGENT.md is now cascaded (global → project), not loaded from .claurst/
+        // HEART.md: SessionStart (from local) + EveryTurn (duplicates)
+        // MEMORY.md: SessionStart (from local) + EveryTurn (duplicates)
         let local_ss: Vec<_> = session_start.iter().filter(|f| f.path.starts_with(&local)).collect();
         let local_et: Vec<_> = every_turn.iter().filter(|f| f.path.starts_with(&local)).collect();
         
-        // SessionStart: AGENT.md + HEART.md = 2
-        assert_eq!(local_ss.len(), 2, "Expected AGENT.md + HEART.md in session-start");
-        // EveryTurn: AGENT.md + MEMORY.md = 2
-        assert_eq!(local_et.len(), 2, "Expected AGENT.md + MEMORY.md in every-turn");
+        // SessionStart: HEART.md + MEMORY.md = 2
+        assert_eq!(local_ss.len(), 2, "Expected HEART.md + MEMORY.md in session-start");
+        // EveryTurn: HEART.md + MEMORY.md = 2
+        assert_eq!(local_et.len(), 2, "Expected HEART.md + MEMORY.md in every-turn");
     }
 
     #[test]

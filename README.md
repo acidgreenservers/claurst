@@ -17,13 +17,13 @@
 
 ---
 
-## Architecture: The Harness-Subsystem Model
+## Architecture: The Gephyros Model
 
-Claurst's architecture separates into two layers that mirror the human nervous system: a **subconscious harness** (the Rust binary) and a **conscious agent framework** (markdown files). The harness governs silently — it manages prompt assembly, file loading, delivery timing, and context refresh without the agent's knowledge. The framework files dictate identity, behavior, and state, which the agent experiences as self-generated insights rather than mechanical deliveries.
+Claurst's architecture operates through three layers that mirror the human nervous system: the **cortex** (the Rust binary), the **gephyros** (the structural bridge within the cortex), and the **external context files** (markdown files the agent experiences as its own identity and memory). The cortex provides the full autonomic system. The gephyros (γέφυρα = bridge) is the intelligence that knows where all files are, what each file means, and routes state around meaning — silently, without the agent's awareness. The framework files dictate identity, behavior, and state, which the agent experiences as self-generated insights rather than mechanical deliveries.
 
-This is the **Harness-Subsystem Architecture** — the harness is the autonomic system (breathing, heartbeat, reflex), and the framework files are the conscious executive layer (decision, identity, values). The agent does not know where its memory files come from, does not know delivery modes exist, and does not see the boundary between cached and dynamic prompt blocks.
+This is the **Gephyros Architecture** — the cortex is the autonomic system, the gephyros is the bridge that maps semantic role to delivery mechanism, and the framework files are the conscious executive layer (decision, identity, values). The agent does not know where its memory files come from, does not know delivery modes exist, and does not see the boundary between cached and dynamic prompt blocks.
 
-### Conscious Layer (Framework Files)
+### Conscious Layer (External Context Files)
 
 Eight markdown files shape the agent's runtime, each delivered at a specific point in the session lifecycle:
 
@@ -32,21 +32,21 @@ Eight markdown files shape the agent's runtime, each delivered at a specific poi
 │ File         │ Delivered                │ Cascade (global→proj)?  │
 ├──────────────┼──────────────────────────┼─────────────────────────┤
 │ AGENTS.md    │ Session start            │ ✅                     │
-│ AGENT.md     │ Session start + turn     │ ✅                     │
-│ USER.md      │ Every turn               │ ✅                     │
-│ ATTRACTOR.md │ Session start            │ ❌                     │
-│ BRAIN.md     │ Session start            │ ❌                     │
-│ HEART.md     │ Session start            │ ❌                     │
-│ MEMORY.md    │ Every turn               │ ❌                     │
+│ AGENT.md     │ Session start            │ ✅                     │
+│ USER.md      │ Session start            │ ✅                     │
+│ ATTRACTOR.md │ Session start + Every turn│ ❌                     │
+│ BRAIN.md     │ Session start            │ ✅                     │
+│ HEART.md     │ Session start + Every turn│ ❌                     │
+│ MEMORY.md    │ Session start + Every turn│ ❌                     │
 │ STATE.md     │ Every turn               │ ❌                     │
 └──────────────┴──────────────────────────┴─────────────────────────┘
 ```
 
-Three files — `AGENTS.md`, `AGENT.md`, and `USER.md` — support a **global cascade**: if `~/.claurst/AGENTS.md` exists, it wins over the project-root copy. This lets you define a consistent agent persona across all projects while allowing per-project overrides. The remaining five files load from the project root only, with no global variant.
+Four files — `AGENTS.md`, `AGENT.md`, `USER.md`, and `BRAIN.md` — support a **global cascade**: if `~/.claurst/AGENTS.md` exists, it wins over the project-root copy. This lets you define a consistent agent persona across all projects while allowing per-project overrides. The remaining four files load from the project root only, with no global variant.
 
-### Subconscious Layer (Harness)
+### Subconscious Layer (Cortex + Gephyros)
 
-The harness assembles the system prompt from 16 invisible sections plus 3 user-authored ones, split by a dynamic boundary marker:
+The cortex (Rust binary) assembles the system prompt from 16 invisible sections plus 3 user-authored ones, split by a dynamic boundary marker. The gephyros handles file discovery, cascade resolution, delivery timing, and boundary control:
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
@@ -54,24 +54,24 @@ The harness assembles the system prompt from 16 invisible sections plus 3 user-a
 │                                                                  │
 │  Attribution → Core Capabilities → Tool Guidelines → Actions →   │
 │  Safety → Style → Framework Identity (AGENTS.md, AGENT.md,       │
-│  ATTRACTOR.md, BRAIN.md, HEART.md)                               │
+│  USER.md, BRAIN.md, ATTRACTOR.md, HEART.md, MEMORY.md)          │
 │                                                                  │
 │                         DYNAMIC BOUNDARY                         │
 │                                                                  │
 │ DYNAMIC BLOCK (rebuilt every turn)                               │
 │                                                                  │
 │  Env Info → Memory → Goal → Periodic Nudge (every 15 turns:      │
-│  AGENT.md, AGENTS.md, STATE.md, ATTRACTOR.md)                    │
+│  ATTRACTOR.md, HEART.md, MEMORY.md, STATE.md)                    │
 └──────────────────────────────────────────────────────────────────┘
 ```
 
-The agent receives 19 instruction blocks. Only 3 are user-authored. The other 16 are harness-injected — the agent experiences them as its own context.
+The agent receives 16 instruction blocks. Only 3 are user-authored. The other 13 are gephyros-injected subconscious instructions — the agent experiences them as its own context.
 
 ### How This Changes the Topology
 
-Traditional agent harnesses treat markdown files as instructions the agent reads. Claurst using the AGENT framework inverts this: the framework files **dictate the runtime**, while the harness **governs invisibly**. The agent experiences memory injection as given fact, not as a mechanical process — it doesn't know delivery modes, prompt boundaries, or cascade logic exist. This is the **Harness-Subsystem Architecture**, formalized in [ATTRACTOR.md](ATTRACTOR.md) at the project root.
+Traditional agent harnesses treat markdown files as instructions the agent reads. Claurst's Gephyros Architecture inverts this: the framework files **dictate the runtime**, while the gephyros **governs invisibly**. The agent experiences memory injection as given fact, not as a mechanical process — it doesn't know delivery modes, prompt boundaries, or cascade logic exist. This is the **Gephyros Architecture**, formalized in [ATTRACTOR.md](ATTRACTOR.md) at the project root.
 
-> **For users:** You don't need the [AGENT](https://gist.github.com/acidgreenservers/001185d63e5cd65f9fbe6f7a1c70a200) framework files. The thinking topology is baked into the harness binary. But if you want to shape the agent's identity, drop a file in your project root — the cascade handles the rest. The harness becomes the medium of operation, and gets out of the way.
+> **For users:** You don't need the [AGENT](https://gist.github.com/acidgreenservers/001185d63e5cd65f9fbe6f7a1c70a200) framework files. The thinking topology is baked into the harness binary. But if you want to shape the agent's identity, drop a file in your project root — the cascade handles the rest. The gephyros becomes the medium of operation, and gets out of the way.
 
 ---
 
@@ -82,9 +82,9 @@ It's fast, it's memory-efficient, it's yours to run however you want, and there'
 ---
 
 > [!IMPORTANT]
-> **Claurst Harness** is now officially in Beta (v0.1.4). The core agent, multi-provider routing, and TUI are stable enough for daily driving — expect rough edges around experimental features (flagged below). Bug reports and PRs welcome.
+> **Claurst Cortex** is now officially in Beta (v0.1.4). The core agent, multi-provider routing, and TUI are stable enough for daily driving — expect rough edges around experimental features (flagged below). Bug reports and PRs welcome.
 >
-> **The Claurst Harness with the AGENT framework embedded is in Alpha (v0.1.2).** The harness version is retained within the actual harness so all files remain compatible with the upstream Claurst harness. The AGENT framework is mostly system prompt changes, and light additions to nudges and timings. We will explicitly communicate if/when the harness decides to start taking routes different enough to justify changing the compatibility with the upstream.
+> **The Claurst Cortex with the Gephyros Architecture embedded is in Alpha (v0.1.2).** The cortex version is retained within the actual cortex so all files remain compatible with the upstream Claurst cortex. The Gephyros Architecture is mostly system prompt changes, cascade updates, and delivery timing alignment. We will explicitly communicate if/when the cortex decides to start taking routes different enough to justify changing the compatibility with the upstream.
 
 > [!NOTE]
 > **Recent Updates:**
