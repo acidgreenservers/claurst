@@ -3638,14 +3638,14 @@ mod tests {
     }
 
     #[test]
-    fn motion_w_b_basic() {
+    fn motion_cap_w_b_basic() {
         // "foo.bar baz"  W from 0 → 8 ('b' of 'baz')
         assert_eq!(motion_W("foo.bar baz", 0), 8);
         assert_eq!(motion_B("foo.bar baz", 8), 0);
     }
 
     #[test]
-    fn motion_e_basic() {
+    fn motion_cap_e_basic() {
         assert_eq!(motion_E("foo.bar baz", 0), 6); // end of 'foo.bar' WORD
     }
 
@@ -3656,7 +3656,7 @@ mod tests {
     }
 
     #[test]
-    fn motion_g_basic() {
+    fn motion_cap_g_basic() {
         assert_eq!(motion_G("foo\nbar"), 4);
         assert_eq!(motion_G("single line"), 0);
     }
