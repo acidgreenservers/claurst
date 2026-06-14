@@ -438,10 +438,11 @@ pub async fn truncate_after(path: &Path, from_uuid: &str) -> crate::Result<()> {
         }
         match &entry {
             TranscriptEntry::User(m) | TranscriptEntry::Assistant(m)
-                if m.message.uuid.as_deref() == Some(from_uuid) => {
-                    found = true;
-                    continue; // drop this entry and everything after
-                }
+                if m.message.uuid.as_deref() == Some(from_uuid) =>
+            {
+                found = true;
+                continue; // drop this entry and everything after
+            }
             _ => {}
         }
         keep.push(entry);

@@ -66,7 +66,6 @@ pub enum ModelStatus {
     Deprecated,
 }
 
-
 impl ModelStatus {
     /// Whether to surface this model in default UI listings.
     ///

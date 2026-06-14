@@ -796,8 +796,6 @@ pub mod config {
         FixedCaps { manager_usd: f64, executor_usd: f64 },
     }
 
-    
-
     /// Configuration for manager-executor agent architecture.
     #[derive(Debug, Clone, Serialize, Deserialize)]
     pub struct ManagedAgentConfig {
@@ -1203,8 +1201,7 @@ pub mod config {
     }
 
     /// Configuration for a file formatter tool.
-    #[derive(Debug, Clone, Serialize, Deserialize)]
-    #[derive(Default)]
+    #[derive(Debug, Clone, Serialize, Deserialize, Default)]
     pub struct FormatterConfig {
         /// Command to run, e.g. `["prettier", "--write"]`.
         pub command: Vec<String>,
@@ -1214,8 +1211,6 @@ pub mod config {
         #[serde(default)]
         pub disabled: bool,
     }
-
-    
 
     #[derive(Debug, Clone, Serialize, Deserialize, Default)]
     pub struct ProjectSettings {
@@ -1482,7 +1477,9 @@ pub mod config {
                 tokens
             };
 
-            tokens.effective_credential().map(|cred| (cred.to_string(), tokens.uses_bearer_auth()))
+            tokens
+                .effective_credential()
+                .map(|cred| (cred.to_string(), tokens.uses_bearer_auth()))
         }
 
         pub fn resolve_provider_api_base(&self, provider_id: &str) -> Option<String> {
@@ -3266,9 +3263,7 @@ pub mod history {
                 let path = entry.path();
                 if path.extension().and_then(|s| s.to_str()) == Some("json") {
                     if let Ok(content) = tokio::fs::read_to_string(&path).await {
-                        if let Ok(session) =
-                            serde_json::from_str::<ConversationSession>(&content)
-                        {
+                        if let Ok(session) = serde_json::from_str::<ConversationSession>(&content) {
                             sessions.push(session);
                         }
                     }

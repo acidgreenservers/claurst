@@ -883,14 +883,8 @@ impl HistorySearchOverlay {
         // Sort: pinned entries always first, then by score descending.
         // Stable sort preserves insertion order for ties within each group.
         scored.sort_by(|a, b| {
-            let a_pinned = self
-                .snapshot
-                .get(a.snapshot_idx)
-                .is_some_and(|e| e.pinned);
-            let b_pinned = self
-                .snapshot
-                .get(b.snapshot_idx)
-                .is_some_and(|e| e.pinned);
+            let a_pinned = self.snapshot.get(a.snapshot_idx).is_some_and(|e| e.pinned);
+            let b_pinned = self.snapshot.get(b.snapshot_idx).is_some_and(|e| e.pinned);
             match (b_pinned, a_pinned) {
                 (true, false) => std::cmp::Ordering::Greater,
                 (false, true) => std::cmp::Ordering::Less,

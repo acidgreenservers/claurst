@@ -2887,8 +2887,8 @@ async fn run_interactive(
                                             }
                                             Some('p') => {
                                                 let mut settings =
-                                                    claurst_core::config::Settings::load_sync(
-                                                    ).unwrap_or_default();
+                                                    claurst_core::config::Settings::load_sync()
+                                                        .unwrap_or_default();
                                                 if let Some(path) = selected_path.as_deref() {
                                                     let pattern = format!("{}*", path);
                                                     let _ = manager.add_persistent_allow_path(
@@ -3271,9 +3271,9 @@ async fn run_interactive(
                                                         .send(msg.content.clone())
                                                         .await
                                                         .is_err()
-                                                    {
-                                                        return;
-                                                    }
+                                                {
+                                                    return;
+                                                }
                                             }
                                         }
                                         _ => {}

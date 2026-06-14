@@ -394,8 +394,7 @@ pub mod client {
     use super::*;
 
     /// Provider selection for API calls.
-    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-    #[derive(Default)]
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
     pub enum Provider {
         /// Use Anthropic's API
         #[default]
@@ -403,8 +402,6 @@ pub mod client {
         /// Use OpenAI Codex via OAuth
         Codex,
     }
-
-    
 
     /// Configuration for the HTTP client.
     #[derive(Debug, Clone)]

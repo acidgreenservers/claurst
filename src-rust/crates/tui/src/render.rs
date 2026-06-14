@@ -466,9 +466,7 @@ pub fn render_app(frame: &mut Frame, app: &App) {
             // instead of overflowing the input area.  Cap at 3 lines.
             let usable_width = size.width.max(1) as usize;
             let char_count = text.chars().count();
-            char_count.div_ceil(usable_width)
-                .max(1)
-                .min(3) as u16
+            char_count.div_ceil(usable_width).max(1).min(3) as u16
         } else {
             1
         }

@@ -20,15 +20,15 @@ use crate::overlays::{
 // ---------------------------------------------------------------------------
 
 /// The role of an agent in the manager-executor architecture.
-#[derive(Debug, Clone, PartialEq)]
-#[derive(Default)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub enum AgentRole {
     #[default]
     Normal,
     Manager,
-    Executor { parent_id: String },
+    Executor {
+        parent_id: String,
+    },
 }
-
 
 /// The current status of a sub-agent.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

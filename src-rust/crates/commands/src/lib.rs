@@ -5545,7 +5545,9 @@ impl SlashCommand for EffortCommand {
 
     async fn execute(&self, args: &str, ctx: &mut CommandContext) -> CommandResult {
         match args.trim() {
-            "" => CommandResult::Message("Current effort: normal\nUse /effort [low|normal|high] to change.".to_string()),
+            "" => CommandResult::Message(
+                "Current effort: normal\nUse /effort [low|normal|high] to change.".to_string(),
+            ),
             "low" => {
                 // Low effort: smaller max_tokens
                 ctx.config.max_tokens = Some(4096);

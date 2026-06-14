@@ -57,7 +57,6 @@ pub struct AskUserDialogState {
     pub(crate) reply_tx: Option<tokio::sync::oneshot::Sender<String>>,
 }
 
-
 impl AskUserDialogState {
     pub fn new() -> Self {
         Self::default()

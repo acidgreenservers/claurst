@@ -4764,9 +4764,7 @@ impl App {
                         .prompt_input
                         .suggestions
                         .get(self.prompt_input.suggestion_index.unwrap())
-                        .is_some_and(|s| {
-                            s.source == crate::prompt_input::TypeaheadSource::FileRef
-                        });
+                        .is_some_and(|s| s.source == crate::prompt_input::TypeaheadSource::FileRef);
                     self.prompt_input.accept_suggestion();
                     if is_file_ref {
                         self.prompt_input.insert_char(' ');
@@ -4939,10 +4937,12 @@ impl App {
                 self.pending_mcp_reconnect = true;
                 self.status_message = Some("Reconnecting MCP runtime...".to_string());
             }
-            KeyCode::Char(c) if key.modifiers.is_empty()
-                && self.mcp_view.active_pane != crate::mcp_view::McpViewPane::ServerList => {
-                    self.mcp_view.push_search_char(c);
-                }
+            KeyCode::Char(c)
+                if key.modifiers.is_empty()
+                    && self.mcp_view.active_pane != crate::mcp_view::McpViewPane::ServerList =>
+            {
+                self.mcp_view.push_search_char(c);
+            }
             _ => {}
         }
         false
@@ -5009,10 +5009,9 @@ impl App {
             }
             KeyCode::PageUp => self.diff_viewer.scroll_detail_up(),
             KeyCode::PageDown => self.diff_viewer.scroll_detail_down(),
-            KeyCode::Char(' ')
-                if self.diff_viewer.active_pane == DiffPane::FileList => {
-                    self.diff_viewer.toggle_file_collapse();
-                }
+            KeyCode::Char(' ') if self.diff_viewer.active_pane == DiffPane::FileList => {
+                self.diff_viewer.toggle_file_collapse();
+            }
             _ => {}
         }
     }

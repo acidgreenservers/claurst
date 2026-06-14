@@ -128,10 +128,9 @@ pub fn classify_bash_command(command: &str) -> BashRiskLevel {
     }
 
     // dd with an if= (disk image writing) — extremely destructive
-    if (cmd.starts_with("dd ") || cmd == "dd")
-        && cmd.contains("if=") {
-            return BashRiskLevel::Critical;
-        }
+    if (cmd.starts_with("dd ") || cmd == "dd") && cmd.contains("if=") {
+        return BashRiskLevel::Critical;
+    }
 
     // mkfs — format filesystem
     if cmd.starts_with("mkfs") || cmd.starts_with("mkfs.") {

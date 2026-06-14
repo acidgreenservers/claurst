@@ -1964,7 +1964,9 @@ fn extract_goal_objective_from_args(args: &str) -> Option<String> {
     // doesn't include the budget flag.
     let rest = if let Some(after_flag) = trimmed.strip_prefix("--tokens") {
         let after_flag = after_flag.trim_start();
-        after_flag.split_once(char::is_whitespace).map(|x| x.1)
+        after_flag
+            .split_once(char::is_whitespace)
+            .map(|x| x.1)
             .unwrap_or("")
             .trim()
     } else {

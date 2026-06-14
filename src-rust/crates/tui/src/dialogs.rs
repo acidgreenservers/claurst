@@ -14,8 +14,7 @@ use ratatui::Frame;
 
 /// Distinguishes what kind of action the permission dialog is for.
 /// This drives how many options are shown and what the command block looks like.
-#[derive(Debug, Clone, PartialEq)]
-#[derive(Default)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub enum PermissionDialogKind {
     /// Generic four-option dialog (the previous default).
     #[default]
@@ -33,7 +32,6 @@ pub enum PermissionDialogKind {
     /// File write — four options: once / session / project / deny.
     FileWrite { path: String },
 }
-
 
 // ---------------------------------------------------------------------------
 // Permission dialog types

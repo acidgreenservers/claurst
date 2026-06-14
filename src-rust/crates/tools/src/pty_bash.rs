@@ -626,9 +626,7 @@ impl Tool for PtyBashTool {
 
                     // Update persistent shell state
                     if !state_lines.is_empty() {
-                        if let Some((new_cwd, env_delta)) =
-                            parse_shell_state_block(state_lines)
-                        {
+                        if let Some((new_cwd, env_delta)) = parse_shell_state_block(state_lines) {
                             let mut state = shell_state_arc.lock();
                             state.cwd = Some(new_cwd);
                             for (k, v) in env_delta {

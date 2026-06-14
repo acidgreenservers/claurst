@@ -218,7 +218,7 @@ impl BedrockProvider {
                 mac.update(service.as_bytes());
                 mac.finalize().into_bytes()
             };
-            
+
             {
                 let mut mac = HmacSha256::new_from_slice(&k_service).expect("HMAC init failed");
                 mac.update(b"aws4_request");

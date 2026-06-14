@@ -277,9 +277,7 @@ impl RemoteSettingsManager {
             .as_deref()
             .and_then(|t| serde_json::from_str(t).ok());
 
-        let cached_checksum = cached_settings
-            .as_ref()
-            .map(compute_checksum_from_settings);
+        let cached_checksum = cached_settings.as_ref().map(compute_checksum_from_settings);
 
         match self.fetch_with_retry(cached_checksum.as_deref()).await {
             Ok(Some(new_settings)) => {

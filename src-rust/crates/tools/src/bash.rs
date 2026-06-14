@@ -504,9 +504,7 @@ impl Tool for BashTool {
 
                 // Update persistent shell state from the block.
                 if !state_lines.is_empty() {
-                    if let Some((new_cwd, env_delta)) =
-                        parse_shell_state_block(state_lines)
-                    {
+                    if let Some((new_cwd, env_delta)) = parse_shell_state_block(state_lines) {
                         let mut state = shell_state_arc.lock();
                         state.cwd = Some(new_cwd);
                         // Merge (not replace) so vars set in earlier calls survive

@@ -305,38 +305,38 @@ pub fn parse_inline_formatting(text: &str) -> Vec<Span<'static>> {
         if idx + 1 < chars.len()
             && ((chars[idx] == '*' && chars[idx + 1] == '*')
                 || (chars[idx] == '_' && chars[idx + 1] == '_'))
-            {
-                let marker = chars[idx];
+        {
+            let marker = chars[idx];
 
-                // Flush current text
-                if !current_text.is_empty() {
-                    spans.push(Span::raw(current_text.clone()));
-                    current_text.clear();
-                }
-
-                // Find closing marker (search within 500 chars max to prevent runaway)
-                let mut bold_content = String::new();
-                idx += 2;
-                let max_search = (idx + 500).min(chars.len());
-                while idx < max_search {
-                    if idx + 1 < chars.len() && chars[idx] == marker && chars[idx + 1] == marker {
-                        break;
-                    }
-                    bold_content.push(chars[idx]);
-                    idx += 1;
-                }
-
-                if idx + 1 < chars.len() && chars[idx] == marker && chars[idx + 1] == marker {
-                    idx += 2; // skip closing marker
-                }
-
-                // Apply bold style
-                spans.push(Span::styled(
-                    bold_content,
-                    Style::default().add_modifier(Modifier::BOLD),
-                ));
-                continue;
+            // Flush current text
+            if !current_text.is_empty() {
+                spans.push(Span::raw(current_text.clone()));
+                current_text.clear();
             }
+
+            // Find closing marker (search within 500 chars max to prevent runaway)
+            let mut bold_content = String::new();
+            idx += 2;
+            let max_search = (idx + 500).min(chars.len());
+            while idx < max_search {
+                if idx + 1 < chars.len() && chars[idx] == marker && chars[idx + 1] == marker {
+                    break;
+                }
+                bold_content.push(chars[idx]);
+                idx += 1;
+            }
+
+            if idx + 1 < chars.len() && chars[idx] == marker && chars[idx + 1] == marker {
+                idx += 2; // skip closing marker
+            }
+
+            // Apply bold style
+            spans.push(Span::styled(
+                bold_content,
+                Style::default().add_modifier(Modifier::BOLD),
+            ));
+            continue;
+        }
 
         // Check for ~~ (strikethrough) - no nesting
         if idx + 1 < chars.len() && chars[idx] == '~' && chars[idx + 1] == '~' {

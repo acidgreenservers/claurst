@@ -1128,7 +1128,9 @@ pub async fn run_query_loop(
                 if claurst_api::registry::resolve_provider_api_base(
                     &tool_ctx.config,
                     &provider_id_str,
-                ).is_some() {
+                )
+                .is_some()
+                {
                     if let Some(overridden) = claurst_api::registry::provider_from_config(
                         &tool_ctx.config,
                         &provider_id_str,
@@ -1212,8 +1214,7 @@ pub async fn run_query_loop(
                         top_k: None,
                         stop_sequences: vec![],
                         thinking: if caps.thinking {
-                            effective_thinking_budget
-                                .map(claurst_api::ThinkingConfig::enabled)
+                            effective_thinking_budget.map(claurst_api::ThinkingConfig::enabled)
                         } else {
                             None
                         },

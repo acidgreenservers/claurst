@@ -78,10 +78,9 @@ impl AuthStore {
             Err(_) => return,
         };
         let tmp = path.with_file_name(format!(".auth.json.claurst-tmp-{}", std::process::id()));
-        if std::fs::write(&tmp, &json).is_ok()
-            && std::fs::rename(&tmp, &path).is_err() {
-                let _ = std::fs::remove_file(&tmp);
-            }
+        if std::fs::write(&tmp, &json).is_ok() && std::fs::rename(&tmp, &path).is_err() {
+            let _ = std::fs::remove_file(&tmp);
+        }
     }
 
     /// Store a credential for the given provider (persists immediately).

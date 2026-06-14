@@ -153,12 +153,16 @@ impl GoogleProvider {
                             "mimeType": mime
                         }
                     }))
-                } else { source.url.as_ref().map(|url| json!({
-                        "fileData": {
-                            "fileUri": url,
-                            "mimeType": source.media_type.as_deref().unwrap_or("image/jpeg")
-                        }
-                    })) }
+                } else {
+                    source.url.as_ref().map(|url| {
+                        json!({
+                            "fileData": {
+                                "fileUri": url,
+                                "mimeType": source.media_type.as_deref().unwrap_or("image/jpeg")
+                            }
+                        })
+                    })
+                }
             }
 
             ContentBlock::ToolUse { name, input, .. } => Some(json!({
@@ -181,12 +185,14 @@ impl GoogleProvider {
                             "mimeType": mime
                         }
                     }))
-                } else { source.url.as_ref().map(|url| json!({
+                } else {
+                    source.url.as_ref().map(|url| json!({
                         "fileData": {
                             "fileUri": url,
                             "mimeType": source.media_type.as_deref().unwrap_or("application/pdf")
                         }
-                    })) }
+                    }))
+                }
             }
 
             // Render UI-only / metadata blocks as text so context is not lost.

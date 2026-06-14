@@ -4,8 +4,7 @@ use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::Span;
 
 /// The current state of the remote bridge connection.
-#[derive(Debug, Clone, PartialEq, Eq)]
-#[derive(Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub enum BridgeConnectionState {
     /// No bridge configured / not in use.
     #[default]
@@ -24,7 +23,6 @@ pub enum BridgeConnectionState {
     /// Outbound-only mode (no incoming peers).
     OutboundOnly,
 }
-
 
 impl BridgeConnectionState {
     /// Return a styled status badge `Span` suitable for the status bar.
