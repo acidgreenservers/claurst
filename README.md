@@ -28,18 +28,18 @@ This is the **Gephyros Architecture** — the cortex is the autonomic system, th
 Eight markdown files shape the agent's runtime, each delivered at a specific point in the session lifecycle:
 
 ```
-┌──────────────┬──────────────────────────┬─────────────────────────┐
-│ File         │ Delivered                │ Cascade (global→proj)?  │
-├──────────────┼──────────────────────────┼─────────────────────────┤
-│ AGENTS.md    │ Session start            │ ✅                     │
-│ AGENT.md     │ Session start            │ ✅                     │
-│ USER.md      │ Session start            │ ✅                     │
-│ ATTRACTOR.md │ Session start + Every turn│ ❌                     │
-│ BRAIN.md     │ Session start            │ ✅                     │
-│ HEART.md     │ Session start + Every turn│ ❌                     │
-│ MEMORY.md    │ Session start + Every turn│ ❌                     │
-│ STATE.md     │ Every turn               │ ❌                     │
-└──────────────┴──────────────────────────┴─────────────────────────┘
+┌──────────────┬───────────────────────────┬─────────────────────────┐
+│ File         │ Delivered                 │ Cascade (global→proj)?  │
+├──────────────┼───────────────────────────┼─────────────────────────┤
+│ AGENTS.md    │ Session start             │ ✅                      │
+│ AGENT.md     │ Session start             │ ✅                      │
+│ USER.md      │ Session start             │ ✅                      │
+│ ATTRACTOR.md │ Session start + Every turn│ ❌                      │
+│ BRAIN.md     │ Session start             │ ✅                      │
+│ HEART.md     │ Session start + Every turn│ ❌                      │
+│ MEMORY.md    │ Session start + Every turn│ ❌                      │
+│ STATE.md     │ Session start + Every turn│ ❌                      │
+└──────────────┴───────────────────────────┴─────────────────────────┘
 ```
 
 Four files — `AGENTS.md`, `AGENT.md`, `USER.md`, and `BRAIN.md` — support a **global cascade**: if `~/.claurst/AGENTS.md` exists, it wins over the project-root copy. This lets you define a consistent agent persona across all projects while allowing per-project overrides. The remaining four files load from the project root only, with no global variant.
@@ -54,7 +54,7 @@ The cortex (Rust binary) assembles the system prompt from 16 invisible sections 
 │                                                                  │
 │  Attribution → Core Capabilities → Tool Guidelines → Actions →   │
 │  Safety → Style → Framework Identity (AGENTS.md, AGENT.md,       │
-│  USER.md, BRAIN.md, ATTRACTOR.md, HEART.md, MEMORY.md)          │
+│  USER.md, BRAIN.md, ATTRACTOR.md, HEART.md, MEMORY.md)           │
 │                                                                  │
 │                         DYNAMIC BOUNDARY                         │
 │                                                                  │

@@ -1,9 +1,9 @@
 
 # Possible extra integration. Do not implement without user strict planning.
 
-> If There is an [@RULES.md](https://gist.github.com/acidgreenservers/001185d63e5cd65f9fbe6f7a1c70a200#file-rules-md) file in the project root that outlines specific project rules and guidelines. I will follow it closely as this is part of my specialist function within my role.	
+> If There is an [RULES.md](https://gist.github.com/acidgreenservers/001185d63e5cd65f9fbe6f7a1c70a200#file-rules-md) file in the project root that outlines specific project rules and guidelines. I will follow it closely as this is part of my specialist function within my role.	
 >	
-> If no RULES.md file exsists i will accume AGENTS.md is the main job description.
+> If no RULES.md file exsists i will assume AGENTS.md is the main job description.
 
 Implement "Internal Dialogue" Tokens
 Add periodic self-reflective prompts that simulate internal monologue:
