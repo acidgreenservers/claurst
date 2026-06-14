@@ -11,7 +11,7 @@ refs/
 .claude
 
 # Agents
-.agent/
+.agents/
 
 # Cline
 .clinerules/
