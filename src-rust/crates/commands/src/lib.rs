@@ -9,9 +9,9 @@ use claurst_core::config::{Config, Settings, Theme};
 use claurst_core::cost::CostTracker;
 use claurst_core::types::{ContentBlock, Message};
 use std::collections::BTreeMap;
-use std::sync::Arc;
 #[allow(unused_imports)]
 use std::path::PathBuf;
+use std::sync::Arc;
 
 // ---------------------------------------------------------------------------
 // Core trait
@@ -157,10 +157,14 @@ fn resolve_fast_model_id(config: &Config) -> String {
     provider_lookup_ids(provider_id)
         .into_iter()
         .find_map(|lookup_id| registry.best_small_model_for_provider(lookup_id))
-        .unwrap_or_else(|| stripped_model_for_provider(provider_id, config.effective_model()).to_string())
+        .unwrap_or_else(|| {
+            stripped_model_for_provider(provider_id, config.effective_model()).to_string()
+        })
 }
 
-async fn provider_for_config(config: &Config) -> Option<std::sync::Arc<dyn claurst_api::LlmProvider>> {
+async fn provider_for_config(
+    config: &Config,
+) -> Option<std::sync::Arc<dyn claurst_api::LlmProvider>> {
     let anthropic_auth = config.resolve_anthropic_auth_async().await;
     let registry = claurst_api::ProviderRegistry::from_config(
         config,
@@ -179,7 +183,11 @@ async fn provider_for_config(config: &Config) -> Option<std::sync::Arc<dyn claur
 
     provider_lookup_ids(config.selected_provider_id())
         .into_iter()
-        .find_map(|lookup_id| registry.get(&claurst_core::ProviderId::new(lookup_id)).cloned())
+        .find_map(|lookup_id| {
+            registry
+                .get(&claurst_core::ProviderId::new(lookup_id))
+                .cloned()
+        })
 }
 
 fn text_from_content_blocks(blocks: &[ContentBlock]) -> String {
@@ -408,10 +416,7 @@ fn generate_keybindings_template() -> anyhow::Result<String> {
             .collect(),
     };
 
-    Ok(format!(
-        "{}\n",
-        serde_json::to_string_pretty(&template)?
-    ))
+    Ok(format!("{}\n", serde_json::to_string_pretty(&template)?))
 }
 
 fn parse_theme(name: &str) -> Option<Theme> {
@@ -493,31 +498,36 @@ fn command_category(name: &str) -> &'static str {
         "clear" | "compact" | "rewind" | "summary" | "export" | "rename" | "branch" | "fork" => {
             "Conversation"
         }
-        "model" | "config" | "theme" | "color" | "vim" | "fast" | "effort"
-        | "voice" | "statusline" | "output-style" | "keybindings"
-        | "privacy-settings" | "rate-limit-options" | "sandbox-toggle" => "Settings",
+        "model" | "config" | "theme" | "color" | "vim" | "fast" | "effort" | "voice"
+        | "statusline" | "output-style" | "keybindings" | "privacy-settings"
+        | "rate-limit-options" | "sandbox-toggle" => "Settings",
         "cost" | "stats" | "usage" | "extra-usage" | "context" | "ctx-viz" => "Usage & Cost",
         "status" | "doctor" | "terminal-setup" | "version" | "update" | "upgrade"
         | "release-notes" => "System",
         "login" | "logout" | "refresh" | "permissions" => "Auth & Permissions",
-        "memory" | "files" | "diff" | "init" | "commit" | "review"
-        | "security-review" | "import-config" => "Project",
+        "memory" | "files" | "diff" | "init" | "commit" | "review" | "security-review"
+        | "import-config" => "Project",
         "mcp" | "hooks" | "ide" | "chrome" => "Integrations",
-        "session" | "resume" | "remote-control" | "remote-env"
-        | "teleport" => "Sessions & Remote",
+        "session" | "resume" | "remote-control" | "remote-env" | "teleport" => "Sessions & Remote",
         "help" | "exit" | "feedback" | "bug" => "General",
         "think-back" | "thinkback-play" | "thinking" | "plan" | "tasks" => "AI & Thinking",
-        "copy" | "skills" | "agents" | "plugin" | "reload-plugins"
-        | "stickers" | "passes" | "desktop" | "mobile" | "btw" => "Tools & Extras",
+        "copy" | "skills" | "agents" | "plugin" | "reload-plugins" | "stickers" | "passes"
+        | "desktop" | "mobile" | "btw" => "Tools & Extras",
         _ => "Other",
     }
 }
 
 #[async_trait]
 impl SlashCommand for HelpCommand {
-    fn name(&self) -> &str { "help" }
-    fn aliases(&self) -> Vec<&str> { vec!["h", "?"] }
-    fn description(&self) -> &str { "Show available commands and usage information" }
+    fn name(&self) -> &str {
+        "help"
+    }
+    fn aliases(&self) -> Vec<&str> {
+        vec!["h", "?"]
+    }
+    fn description(&self) -> &str {
+        "Show available commands and usage information"
+    }
 
     async fn execute(&self, args: &str, _ctx: &mut CommandContext) -> CommandResult {
         if !args.is_empty() {
@@ -529,7 +539,11 @@ impl SlashCommand for HelpCommand {
                 } else {
                     format!(
                         "\nAliases: {}",
-                        aliases.iter().map(|a| format!("/{}", a)).collect::<Vec<_>>().join(", ")
+                        aliases
+                            .iter()
+                            .map(|a| format!("/{}", a))
+                            .collect::<Vec<_>>()
+                            .join(", ")
                     )
                 };
                 return CommandResult::Message(format!(
@@ -574,13 +588,18 @@ impl SlashCommand for HelpCommand {
             } else {
                 format!(
                     " ({})",
-                    aliases.iter().map(|a| format!("/{}", a)).collect::<Vec<_>>().join(", ")
+                    aliases
+                        .iter()
+                        .map(|a| format!("/{}", a))
+                        .collect::<Vec<_>>()
+                        .join(", ")
                 )
             };
-            by_cat
-                .entry(cat)
-                .or_default()
-                .push(format!("  /{:<20} {}", format!("{}{}", cmd.name(), alias_str), cmd.description()));
+            by_cat.entry(cat).or_default().push(format!(
+                "  /{:<20} {}",
+                format!("{}{}", cmd.name(), alias_str),
+                cmd.description()
+            ));
         }
 
         let mut output = String::from("Claurst — Slash Commands\n");
@@ -604,9 +623,15 @@ impl SlashCommand for HelpCommand {
 
 #[async_trait]
 impl SlashCommand for ClearCommand {
-    fn name(&self) -> &str { "clear" }
-    fn aliases(&self) -> Vec<&str> { vec!["c", "reset", "new"] }
-    fn description(&self) -> &str { "Clear the conversation history" }
+    fn name(&self) -> &str {
+        "clear"
+    }
+    fn aliases(&self) -> Vec<&str> {
+        vec!["c", "reset", "new"]
+    }
+    fn description(&self) -> &str {
+        "Clear the conversation history"
+    }
 
     async fn execute(&self, _args: &str, _ctx: &mut CommandContext) -> CommandResult {
         CommandResult::ClearConversation
@@ -617,8 +642,12 @@ impl SlashCommand for ClearCommand {
 
 #[async_trait]
 impl SlashCommand for CompactCommand {
-    fn name(&self) -> &str { "compact" }
-    fn description(&self) -> &str { "Compact the conversation to reduce token usage" }
+    fn name(&self) -> &str {
+        "compact"
+    }
+    fn description(&self) -> &str {
+        "Compact the conversation to reduce token usage"
+    }
 
     async fn execute(&self, args: &str, ctx: &mut CommandContext) -> CommandResult {
         let msg_count = ctx.messages.len();
@@ -642,8 +671,12 @@ impl SlashCommand for CompactCommand {
 
 #[async_trait]
 impl SlashCommand for CostCommand {
-    fn name(&self) -> &str { "cost" }
-    fn description(&self) -> &str { "Show token usage and cost for this session" }
+    fn name(&self) -> &str {
+        "cost"
+    }
+    fn description(&self) -> &str {
+        "Show token usage and cost for this session"
+    }
     fn help(&self) -> &str {
         "Usage: /cost\n\n\
          Shows per-category token counts and the estimated cost for this session.\n\
@@ -665,10 +698,10 @@ impl SlashCommand for CostCommand {
         let cost = tracker.total_cost_usd();
 
         // Per-category cost breakdown.
-        let input_cost    = (input as f64 * pricing.input_per_mtk) / 1_000_000.0;
-        let output_cost   = (output as f64 * pricing.output_per_mtk) / 1_000_000.0;
-        let cc_cost       = (cache_create as f64 * pricing.cache_creation_per_mtk) / 1_000_000.0;
-        let cr_cost       = (cache_read as f64 * pricing.cache_read_per_mtk) / 1_000_000.0;
+        let input_cost = (input as f64 * pricing.input_per_mtk) / 1_000_000.0;
+        let output_cost = (output as f64 * pricing.output_per_mtk) / 1_000_000.0;
+        let cc_cost = (cache_create as f64 * pricing.cache_creation_per_mtk) / 1_000_000.0;
+        let cr_cost = (cache_read as f64 * pricing.cache_read_per_mtk) / 1_000_000.0;
 
         // Pricing info line.
         let pricing_line = format!(
@@ -682,10 +715,12 @@ impl SlashCommand for CostCommand {
         // Cache savings note: how much input cost was avoided by using cache-read
         // instead of re-sending those tokens as normal input.
         let savings = if cache_read > 0 {
-            let saved =
-                (cache_read as f64 * (pricing.input_per_mtk - pricing.cache_read_per_mtk))
-                    / 1_000_000.0;
-            format!("\n  Cache savings:  ${:.4}  ({} tokens served from cache)", saved, cache_read)
+            let saved = (cache_read as f64 * (pricing.input_per_mtk - pricing.cache_read_per_mtk))
+                / 1_000_000.0;
+            format!(
+                "\n  Cache savings:  ${:.4}  ({} tokens served from cache)",
+                saved, cache_read
+            )
         } else {
             String::new()
         };
@@ -723,9 +758,15 @@ impl SlashCommand for CostCommand {
 
 #[async_trait]
 impl SlashCommand for ExitCommand {
-    fn name(&self) -> &str { "exit" }
-    fn aliases(&self) -> Vec<&str> { vec!["quit", "q"] }
-    fn description(&self) -> &str { "Exit Claurst" }
+    fn name(&self) -> &str {
+        "exit"
+    }
+    fn aliases(&self) -> Vec<&str> {
+        vec!["quit", "q"]
+    }
+    fn description(&self) -> &str {
+        "Exit Claurst"
+    }
 
     async fn execute(&self, _args: &str, _ctx: &mut CommandContext) -> CommandResult {
         CommandResult::Exit
@@ -736,8 +777,12 @@ impl SlashCommand for ExitCommand {
 
 #[async_trait]
 impl SlashCommand for ModelCommand {
-    fn name(&self) -> &str { "model" }
-    fn description(&self) -> &str { "Show or change the current model" }
+    fn name(&self) -> &str {
+        "model"
+    }
+    fn description(&self) -> &str {
+        "Show or change the current model"
+    }
     fn help(&self) -> &str {
         "Usage: /model [<model-id>]\n\n\
          Without arguments, shows the current model.\n\n\
@@ -754,10 +799,7 @@ impl SlashCommand for ModelCommand {
     async fn execute(&self, args: &str, ctx: &mut CommandContext) -> CommandResult {
         let args = args.trim();
         if args.is_empty() {
-            CommandResult::Message(format!(
-                "Current model: {}",
-                ctx.config.effective_model()
-            ))
+            CommandResult::Message(format!("Current model: {}", ctx.config.effective_model()))
         } else {
             // Accept both "provider/model" and bare model names.
             // The config stores the full string (including provider prefix when present)
@@ -786,8 +828,12 @@ impl SlashCommand for ModelCommand {
 
 #[async_trait]
 impl SlashCommand for BudgetCommand {
-    fn name(&self) -> &str { "budget" }
-    fn description(&self) -> &str { "Show or change the output token budget per response" }
+    fn name(&self) -> &str {
+        "budget"
+    }
+    fn description(&self) -> &str {
+        "Show or change the output token budget per response"
+    }
     fn help(&self) -> &str {
         "Usage: /budget [<token-count>]\n\n\
          Without arguments, shows the current output token budget.\n\n\
@@ -819,7 +865,11 @@ impl SlashCommand for BudgetCommand {
                 new_config.max_tokens = Some(capped);
                 CommandResult::ConfigChangeMessage(
                     new_config,
-                    format!("Budget capped to {} tokens (hard limit: {})", capped, claurst_core::constants::MAX_TOKENS_HARD_LIMIT),
+                    format!(
+                        "Budget capped to {} tokens (hard limit: {})",
+                        capped,
+                        claurst_core::constants::MAX_TOKENS_HARD_LIMIT
+                    ),
                 )
             } else {
                 let mut new_config = ctx.config.clone();
@@ -837,9 +887,15 @@ impl SlashCommand for BudgetCommand {
 
 #[async_trait]
 impl SlashCommand for ConfigCommand {
-    fn name(&self) -> &str { "config" }
-    fn aliases(&self) -> Vec<&str> { vec!["settings"] }
-    fn description(&self) -> &str { "Show or modify configuration settings" }
+    fn name(&self) -> &str {
+        "config"
+    }
+    fn aliases(&self) -> Vec<&str> {
+        vec!["settings"]
+    }
+    fn description(&self) -> &str {
+        "Show or modify configuration settings"
+    }
 
     async fn execute(&self, args: &str, ctx: &mut CommandContext) -> CommandResult {
         let args = args.trim();
@@ -858,10 +914,9 @@ impl SlashCommand for ConfigCommand {
                     "output-style = {}",
                     current_output_style_name(&ctx.config)
                 )),
-                "model" => CommandResult::Message(format!(
-                    "model = {}",
-                    ctx.config.effective_model()
-                )),
+                "model" => {
+                    CommandResult::Message(format!("model = {}", ctx.config.effective_model()))
+                }
                 "permission-mode" | "permission_mode" => CommandResult::Message(format!(
                     "permission-mode = {:?}",
                     ctx.config.permission_mode
@@ -875,7 +930,8 @@ impl SlashCommand for ConfigCommand {
                 "model" => {
                     let mut new_config = ctx.config.clone();
                     new_config.model = None;
-                    if let Err(err) = save_settings_mutation(|settings| settings.config.model = None)
+                    if let Err(err) =
+                        save_settings_mutation(|settings| settings.config.model = None)
                     {
                         return CommandResult::Error(format!(
                             "Failed to save configuration: {}",
@@ -946,8 +1002,7 @@ impl SlashCommand for ConfigCommand {
                 }
 
                 let mut new_config = ctx.config.clone();
-                new_config.output_style =
-                    (normalized != "default").then(|| normalized.clone());
+                new_config.output_style = (normalized != "default").then(|| normalized.clone());
                 if let Err(err) = save_settings_mutation(|settings| {
                     settings.config.output_style =
                         (normalized != "default").then(|| normalized.clone());
@@ -980,10 +1035,7 @@ impl SlashCommand for ConfigCommand {
                 }) {
                     return CommandResult::Error(format!("Failed to save configuration: {}", err));
                 }
-                CommandResult::ConfigChangeMessage(
-                    new_config,
-                    format!("Model set to {}.", value),
-                )
+                CommandResult::ConfigChangeMessage(new_config, format!("Model set to {}.", value))
             }
             "permission-mode" | "permission_mode" => {
                 let mode = match value.trim().to_lowercase().as_str() {
@@ -1024,8 +1076,12 @@ impl SlashCommand for ConfigCommand {
 
 #[async_trait]
 impl SlashCommand for ColorCommand {
-    fn name(&self) -> &str { "color" }
-    fn description(&self) -> &str { "Set or show the prompt bar color for this session" }
+    fn name(&self) -> &str {
+        "color"
+    }
+    fn description(&self) -> &str {
+        "Set or show the prompt bar color for this session"
+    }
     fn help(&self) -> &str {
         "Usage: /color [<name|#RRGGBB|default>]\n\n\
          Sets the accent color for the prompt bar in this session.\n\
@@ -1052,10 +1108,11 @@ impl SlashCommand for ColorCommand {
             None
         } else {
             let known_colors = [
-                "red", "green", "blue", "yellow", "cyan", "magenta",
-                "white", "orange", "purple", "pink", "gray", "grey",
+                "red", "green", "blue", "yellow", "cyan", "magenta", "white", "orange", "purple",
+                "pink", "gray", "grey",
             ];
-            let is_hex = color.starts_with('#') && (color.len() == 4 || color.len() == 7)
+            let is_hex = color.starts_with('#')
+                && (color.len() == 4 || color.len() == 7)
                 && color[1..].chars().all(|c| c.is_ascii_hexdigit());
             if !is_hex && !known_colors.contains(&color.to_lowercase().as_str()) {
                 return CommandResult::Error(format!(
@@ -1081,8 +1138,12 @@ impl SlashCommand for ColorCommand {
 
 #[async_trait]
 impl SlashCommand for ThemeCommand {
-    fn name(&self) -> &str { "theme" }
-    fn description(&self) -> &str { "Show or change the current theme" }
+    fn name(&self) -> &str {
+        "theme"
+    }
+    fn description(&self) -> &str {
+        "Show or change the current theme"
+    }
     fn help(&self) -> &str {
         "Usage: /theme [default|dark|light]\n\
          Without arguments, shows the active theme. With an argument, updates the theme for this and future sessions."
@@ -1098,15 +1159,12 @@ impl SlashCommand for ThemeCommand {
         }
 
         let Some(theme) = parse_theme(args) else {
-            return CommandResult::Error(
-                "Theme must be one of: default, dark, light".to_string(),
-            );
+            return CommandResult::Error("Theme must be one of: default, dark, light".to_string());
         };
 
         let mut new_config = ctx.config.clone();
         new_config.theme = theme.clone();
-        if let Err(err) = save_settings_mutation(|settings| settings.config.theme = theme.clone())
-        {
+        if let Err(err) = save_settings_mutation(|settings| settings.config.theme = theme.clone()) {
             return CommandResult::Error(format!("Failed to save theme: {}", err));
         }
 
@@ -1121,8 +1179,12 @@ impl SlashCommand for ThemeCommand {
 
 #[async_trait]
 impl SlashCommand for OutputStyleCommand {
-    fn name(&self) -> &str { "output-style" }
-    fn description(&self) -> &str { "Show or switch the current output style" }
+    fn name(&self) -> &str {
+        "output-style"
+    }
+    fn description(&self) -> &str {
+        "Show or switch the current output style"
+    }
     fn help(&self) -> &str {
         "Usage: /output-style [style-name]\n\n\
          With no argument: list available styles and show the current one.\n\
@@ -1160,8 +1222,7 @@ impl SlashCommand for OutputStyleCommand {
         let mut new_config = ctx.config.clone();
         new_config.output_style = (normalized != "default").then(|| normalized.clone());
         if let Err(err) = save_settings_mutation(|settings| {
-            settings.config.output_style =
-                (normalized != "default").then(|| normalized.clone());
+            settings.config.output_style = (normalized != "default").then(|| normalized.clone());
         }) {
             return CommandResult::Error(format!("Failed to save configuration: {}", err));
         }
@@ -1180,8 +1241,12 @@ impl SlashCommand for OutputStyleCommand {
 
 #[async_trait]
 impl SlashCommand for KeybindingsCommand {
-    fn name(&self) -> &str { "keybindings" }
-    fn description(&self) -> &str { "Create or open ~/.claurst/keybindings.json" }
+    fn name(&self) -> &str {
+        "keybindings"
+    }
+    fn description(&self) -> &str {
+        "Create or open ~/.claurst/keybindings.json"
+    }
 
     async fn execute(&self, _args: &str, _ctx: &mut CommandContext) -> CommandResult {
         let config_dir = Settings::config_dir();
@@ -1246,8 +1311,12 @@ impl SlashCommand for KeybindingsCommand {
 
 #[async_trait]
 impl SlashCommand for PrivacySettingsCommand {
-    fn name(&self) -> &str { "privacy-settings" }
-    fn description(&self) -> &str { "Open Claurst privacy settings" }
+    fn name(&self) -> &str {
+        "privacy-settings"
+    }
+    fn description(&self) -> &str {
+        "Open Claurst privacy settings"
+    }
 
     async fn execute(&self, _args: &str, _ctx: &mut CommandContext) -> CommandResult {
         let url = "https://claude.ai/settings/data-privacy-controls";
@@ -1263,15 +1332,18 @@ impl SlashCommand for PrivacySettingsCommand {
 
 #[async_trait]
 impl SlashCommand for VersionCommand {
-    fn name(&self) -> &str { "version" }
-    fn aliases(&self) -> Vec<&str> { vec!["v"] }
-    fn description(&self) -> &str { "Show version information" }
+    fn name(&self) -> &str {
+        "version"
+    }
+    fn aliases(&self) -> Vec<&str> {
+        vec!["v"]
+    }
+    fn description(&self) -> &str {
+        "Show version information"
+    }
 
     async fn execute(&self, _args: &str, _ctx: &mut CommandContext) -> CommandResult {
-        CommandResult::Message(format!(
-            "Claurst v{}",
-            claurst_core::constants::APP_VERSION
-        ))
+        CommandResult::Message(format!("Claurst v{}", claurst_core::constants::APP_VERSION))
     }
 }
 
@@ -1279,9 +1351,15 @@ impl SlashCommand for VersionCommand {
 
 #[async_trait]
 impl SlashCommand for ResumeCommand {
-    fn name(&self) -> &str { "resume" }
-    fn aliases(&self) -> Vec<&str> { vec!["r", "continue"] }
-    fn description(&self) -> &str { "Resume a previous conversation" }
+    fn name(&self) -> &str {
+        "resume"
+    }
+    fn aliases(&self) -> Vec<&str> {
+        vec!["r", "continue"]
+    }
+    fn description(&self) -> &str {
+        "Resume a previous conversation"
+    }
 
     async fn execute(&self, args: &str, _ctx: &mut CommandContext) -> CommandResult {
         if args.is_empty() {
@@ -1292,19 +1370,16 @@ impl SlashCommand for ResumeCommand {
             let last = &sessions[0];
             match claurst_core::history::load_session(&last.id).await {
                 Ok(session) => CommandResult::ResumeSession(session),
-                Err(e) => CommandResult::Error(format!(
-                    "Failed to load session {}: {}",
-                    last.id, e
-                )),
+                Err(e) => {
+                    CommandResult::Error(format!("Failed to load session {}: {}", last.id, e))
+                }
             }
         } else {
             match claurst_core::history::load_session(args.trim()).await {
                 Ok(session) => CommandResult::ResumeSession(session),
-                Err(e) => CommandResult::Error(format!(
-                    "Failed to load session {}: {}",
-                    args.trim(),
-                    e
-                )),
+                Err(e) => {
+                    CommandResult::Error(format!("Failed to load session {}: {}", args.trim(), e))
+                }
             }
         }
     }
@@ -1314,8 +1389,12 @@ impl SlashCommand for ResumeCommand {
 
 #[async_trait]
 impl SlashCommand for StatusCommand {
-    fn name(&self) -> &str { "status" }
-    fn description(&self) -> &str { "Show comprehensive system and session status" }
+    fn name(&self) -> &str {
+        "status"
+    }
+    fn description(&self) -> &str {
+        "Show comprehensive system and session status"
+    }
 
     async fn execute(&self, _args: &str, ctx: &mut CommandContext) -> CommandResult {
         // Auth status
@@ -1401,8 +1480,12 @@ impl SlashCommand for StatusCommand {
 
 #[async_trait]
 impl SlashCommand for DiffCommand {
-    fn name(&self) -> &str { "diff" }
-    fn description(&self) -> &str { "Show git diff of changes in the working directory" }
+    fn name(&self) -> &str {
+        "diff"
+    }
+    fn description(&self) -> &str {
+        "Show git diff of changes in the working directory"
+    }
     fn help(&self) -> &str {
         "Usage: /diff [--stat|--staged|<ref>]\n\n\
          Shows git diff output for the current working directory.\n\n\
@@ -1477,7 +1560,8 @@ fn parse_token_budget(s: &str) -> Option<u64> {
     if s.is_empty() {
         return None;
     }
-    let (num_str, multiplier) = if let Some(n) = s.strip_suffix('K').or_else(|| s.strip_suffix('k')) {
+    let (num_str, multiplier) = if let Some(n) = s.strip_suffix('K').or_else(|| s.strip_suffix('k'))
+    {
         (n, 1_000u64)
     } else if let Some(n) = s.strip_suffix('M').or_else(|| s.strip_suffix('m')) {
         (n, 1_000_000u64)
@@ -1489,8 +1573,12 @@ fn parse_token_budget(s: &str) -> Option<u64> {
 
 #[async_trait]
 impl SlashCommand for GoalCommand {
-    fn name(&self) -> &str { "goal" }
-    fn description(&self) -> &str { "Set or manage a durable long-running goal for autonomous work" }
+    fn name(&self) -> &str {
+        "goal"
+    }
+    fn description(&self) -> &str {
+        "Set or manage a durable long-running goal for autonomous work"
+    }
     fn help(&self) -> &str {
         "Usage:\n\
          /goal <objective>              — set a new goal and begin working autonomously\n\
@@ -1512,7 +1600,8 @@ impl SlashCommand for GoalCommand {
     async fn execute(&self, args: &str, ctx: &mut CommandContext) -> CommandResult {
         if !claurst_core::goals_enabled() {
             return CommandResult::Message(
-                "Goals are disabled. Unset CLAURST_GOALS=0 (or remove it) to re-enable.".to_string(),
+                "Goals are disabled. Unset CLAURST_GOALS=0 (or remove it) to re-enable."
+                    .to_string(),
             );
         }
 
@@ -1542,7 +1631,9 @@ impl SlashCommand for GoalCommand {
                 if let Err(e) = store.set_status(session_id, claurst_core::GoalStatus::Paused) {
                     return CommandResult::Error(format!("Failed to pause goal: {}", e));
                 }
-                return CommandResult::Message("Goal paused. Use /goal resume to continue.".to_string());
+                return CommandResult::Message(
+                    "Goal paused. Use /goal resume to continue.".to_string(),
+                );
             }
             "resume" => {
                 let store = match open_goal_store() {
@@ -1564,7 +1655,9 @@ impl SlashCommand for GoalCommand {
                 if let Err(e) = store.set_status(session_id, claurst_core::GoalStatus::Active) {
                     return CommandResult::Error(format!("Failed to resume goal: {}", e));
                 }
-                return CommandResult::Message("Goal resumed. Claurst will continue on the next message.".to_string());
+                return CommandResult::Message(
+                    "Goal resumed. Claurst will continue on the next message.".to_string(),
+                );
             }
             "clear" => {
                 let store = match open_goal_store() {
@@ -1633,12 +1726,9 @@ impl SlashCommand for GoalCommand {
         };
 
         match store.set_goal(session_id, objective, token_budget) {
-            Err(claurst_core::GoalError::ObjectiveTooLong { len, max }) => {
-                CommandResult::Error(format!(
-                    "Objective too long ({} chars). Max {} chars.",
-                    len, max
-                ))
-            }
+            Err(claurst_core::GoalError::ObjectiveTooLong { len, max }) => CommandResult::Error(
+                format!("Objective too long ({} chars). Max {} chars.", len, max),
+            ),
             Err(e) => CommandResult::Error(format!("Failed to set goal: {}", e)),
             Ok(goal) => {
                 // Return UserMessage so the query loop fires immediately and the
@@ -1660,9 +1750,9 @@ fn goal_status(session_id: &str) -> CommandResult {
         None => return CommandResult::Error("Could not open goal store.".to_string()),
     };
     match store.get_goal(session_id) {
-        None => CommandResult::Message(
-            "No active goal. Set one with:\n  /goal <objective>".to_string(),
-        ),
+        None => {
+            CommandResult::Message("No active goal. Set one with:\n  /goal <objective>".to_string())
+        }
         Some(g) => {
             let budget_line = g
                 .budget_display()
@@ -1689,8 +1779,12 @@ fn goal_status(session_id: &str) -> CommandResult {
 
 #[async_trait]
 impl SlashCommand for MemoryCommand {
-    fn name(&self) -> &str { "memory" }
-    fn description(&self) -> &str { "View, edit, or clear AGENTS.md memory files" }
+    fn name(&self) -> &str {
+        "memory"
+    }
+    fn description(&self) -> &str {
+        "View, edit, or clear AGENTS.md memory files"
+    }
     fn help(&self) -> &str {
         "Usage: /memory [edit|clear] [global]\n\n\
          Shows the content of AGENTS.md files that provide project context to Claurst.\n\
@@ -1726,7 +1820,10 @@ impl SlashCommand for MemoryCommand {
 
         // ---- /memory edit [global|project] ------------------------------------
         if cmd == "edit" || cmd.starts_with("edit ") {
-            let target_hint = cmd.strip_prefix("edit").map(|s| s.trim()).unwrap_or("project");
+            let target_hint = cmd
+                .strip_prefix("edit")
+                .map(|s| s.trim())
+                .unwrap_or("project");
             let target = match target_hint {
                 "global" => {
                     // Ensure global dir exists
@@ -1767,11 +1864,10 @@ impl SlashCommand for MemoryCommand {
             } else if let Ok(ed) = std::env::var("EDITOR") {
                 format!("Using $EDITOR=\"{}\".", ed)
             } else {
-                "To use a different editor, set the $EDITOR or $VISUAL environment variable.".to_string()
+                "To use a different editor, set the $EDITOR or $VISUAL environment variable."
+                    .to_string()
             };
-            let spawn_result = std::process::Command::new(&editor)
-                .arg(&target)
-                .status();
+            let spawn_result = std::process::Command::new(&editor).arg(&target).status();
             return match spawn_result {
                 Ok(_) => CommandResult::Message(format!(
                     "Opened {} in your editor.\n{}",
@@ -1780,14 +1876,20 @@ impl SlashCommand for MemoryCommand {
                 )),
                 Err(e) => CommandResult::Message(format!(
                     "Could not launch '{}': {}. Edit {} manually.\n{}",
-                    editor, e, target.display(), editor_hint
+                    editor,
+                    e,
+                    target.display(),
+                    editor_hint
                 )),
             };
         }
 
         // ---- /memory clear [global|project] -----------------------------------
         if cmd == "clear" || cmd.starts_with("clear ") {
-            let target_hint = cmd.strip_prefix("clear").map(|s| s.trim()).unwrap_or("project");
+            let target_hint = cmd
+                .strip_prefix("clear")
+                .map(|s| s.trim())
+                .unwrap_or("project");
             let (label, target) = match target_hint {
                 "global" => ("global (~/.claurst/AGENTS.md)", global_path.clone()),
                 _ => {
@@ -1811,9 +1913,9 @@ impl SlashCommand for MemoryCommand {
                     label,
                     target.display()
                 )),
-                Err(e) => CommandResult::Error(format!(
-                    "Failed to clear {}: {}", target.display(), e
-                )),
+                Err(e) => {
+                    CommandResult::Error(format!("Failed to clear {}: {}", target.display(), e))
+                }
             };
         }
 
@@ -1837,7 +1939,11 @@ impl SlashCommand for MemoryCommand {
                             lines = lines,
                             chars = chars,
                             content = if content.len() > 2000 {
-                                format!("{}…\n(truncated — file is {} chars)", &content[..2000], chars)
+                                format!(
+                                    "{}…\n(truncated — file is {} chars)",
+                                    &content[..2000],
+                                    chars
+                                )
                             } else {
                                 content.clone()
                             }
@@ -1845,7 +1951,9 @@ impl SlashCommand for MemoryCommand {
                     }
                     Err(e) => output.push_str(&format!(
                         "\n[{label}] — Error reading {}: {}\n",
-                        path.display(), e, label = label
+                        path.display(),
+                        e,
+                        label = label
                     )),
                 }
             }
@@ -1855,7 +1963,7 @@ impl SlashCommand for MemoryCommand {
             output.push_str(
                 "\nNo AGENTS.md files found.\n\
                  Use /init to create one in the current project.\n\
-                 Use /memory edit to create and open a memory file."
+                 Use /memory edit to create and open a memory file.",
             );
         } else {
             output.push_str(
@@ -1863,7 +1971,7 @@ impl SlashCommand for MemoryCommand {
                  /memory edit          — edit project AGENTS.md\n\
                  /memory edit global   — edit global ~/.claurst/AGENTS.md\n\
                  /memory clear         — clear project AGENTS.md\n\
-                 /memory clear global  — clear global AGENTS.md"
+                 /memory clear global  — clear global AGENTS.md",
             );
         }
 
@@ -1875,10 +1983,18 @@ impl SlashCommand for MemoryCommand {
 
 #[async_trait]
 impl SlashCommand for BugCommand {
-    fn name(&self) -> &str { "feedback" }
-    fn aliases(&self) -> Vec<&str> { vec!["bug"] }
-    fn description(&self) -> &str { "Submit feedback about Claurst" }
-    fn help(&self) -> &str { "Usage: /feedback [report]" }
+    fn name(&self) -> &str {
+        "feedback"
+    }
+    fn aliases(&self) -> Vec<&str> {
+        vec!["bug"]
+    }
+    fn description(&self) -> &str {
+        "Submit feedback about Claurst"
+    }
+    fn help(&self) -> &str {
+        "Usage: /feedback [report]"
+    }
 
     async fn execute(&self, args: &str, _ctx: &mut CommandContext) -> CommandResult {
         let report = args.trim();
@@ -1900,8 +2016,12 @@ impl SlashCommand for BugCommand {
 
 #[async_trait]
 impl SlashCommand for UsageCommand {
-    fn name(&self) -> &str { "usage" }
-    fn description(&self) -> &str { "Show API usage, quotas, and rate limit status" }
+    fn name(&self) -> &str {
+        "usage"
+    }
+    fn description(&self) -> &str {
+        "Show API usage, quotas, and rate limit status"
+    }
     fn help(&self) -> &str {
         "Usage: /usage\n\n\
          Shows current session API usage and account quota information.\n\
@@ -1962,9 +2082,15 @@ impl SlashCommand for UsageCommand {
 
 #[async_trait]
 impl SlashCommand for PluginCommand {
-    fn name(&self) -> &str { "plugin" }
-    fn aliases(&self) -> Vec<&str> { vec!["plugins"] }
-    fn description(&self) -> &str { "Manage plugins" }
+    fn name(&self) -> &str {
+        "plugin"
+    }
+    fn aliases(&self) -> Vec<&str> {
+        vec!["plugins"]
+    }
+    fn description(&self) -> &str {
+        "Manage plugins"
+    }
     fn help(&self) -> &str {
         "Usage: /plugin [list|info <name>|enable <name>|disable <name>|install <path>|reload]\n\
          Manage Claurst plugins.\n\n\
@@ -1983,9 +2109,7 @@ impl SlashCommand for PluginCommand {
 
         // Helper: prefer the already-loaded global registry, falling back to a
         // fresh disk scan so the command still works without the global being set.
-        async fn get_registry(
-            project_dir: &std::path::Path,
-        ) -> claurst_plugins::PluginRegistry {
+        async fn get_registry(project_dir: &std::path::Path) -> claurst_plugins::PluginRegistry {
             if let Some(global) = claurst_plugins::global_plugin_registry() {
                 let mut reg = claurst_plugins::PluginRegistry::new();
                 for p in global.all() {
@@ -2066,9 +2190,7 @@ impl SlashCommand for PluginCommand {
                 )
             }
             claurst_plugins::PluginSubCommand::Install(path) => {
-                let result = claurst_plugins::install_plugin_from_path(
-                    std::path::Path::new(&path),
-                );
+                let result = claurst_plugins::install_plugin_from_path(std::path::Path::new(&path));
                 match result {
                     Ok(name) => CommandResult::Message(format!(
                         "Plugin '{}' installed successfully. Run `/plugin reload` to activate it.",
@@ -2083,9 +2205,8 @@ impl SlashCommand for PluginCommand {
                     claurst_plugins::reload_plugins(&old_registry, &project_dir, &[]).await;
                 CommandResult::Message(claurst_plugins::format_reload_summary(&new_registry, &diff))
             }
-            claurst_plugins::PluginSubCommand::Help => {
-                CommandResult::Message(
-                    "Plugin commands:\n\
+            claurst_plugins::PluginSubCommand::Help => CommandResult::Message(
+                "Plugin commands:\n\
                      /plugin              — list all installed plugins\n\
                      /plugin list         — list all installed plugins\n\
                      /plugin info <name>  — show plugin details\n\
@@ -2093,9 +2214,8 @@ impl SlashCommand for PluginCommand {
                      /plugin disable <name>  — disable a plugin\n\
                      /plugin install <path>  — install plugin from local path\n\
                      /plugin reload       — reload plugins from disk"
-                        .to_string(),
-                )
-            }
+                    .to_string(),
+            ),
         }
     }
 }
@@ -2104,8 +2224,12 @@ impl SlashCommand for PluginCommand {
 
 #[async_trait]
 impl SlashCommand for ReloadPluginsCommand {
-    fn name(&self) -> &str { "reload-plugins" }
-    fn description(&self) -> &str { "Reload all plugins without restarting" }
+    fn name(&self) -> &str {
+        "reload-plugins"
+    }
+    fn description(&self) -> &str {
+        "Reload all plugins without restarting"
+    }
     fn help(&self) -> &str {
         "Usage: /reload-plugins\n\
          Reloads all plugins and shows what changed."
@@ -2180,14 +2304,15 @@ impl SlashCommand for PluginSlashCommandAdapter {
                 } else {
                     format!("{} {}", command, args)
                 };
-                let cmd_result = std::process::Command::new(if cfg!(windows) { "cmd" } else { "sh" })
-                    .args(if cfg!(windows) {
-                        vec!["/C", &full_cmd]
-                    } else {
-                        vec!["-c", &full_cmd]
-                    })
-                    .env("CLAUDE_PLUGIN_ROOT", plugin_root)
-                    .output();
+                let cmd_result =
+                    std::process::Command::new(if cfg!(windows) { "cmd" } else { "sh" })
+                        .args(if cfg!(windows) {
+                            vec!["/C", &full_cmd]
+                        } else {
+                            vec!["-c", &full_cmd]
+                        })
+                        .env("CLAUDE_PLUGIN_ROOT", plugin_root)
+                        .output();
                 match cmd_result {
                     Ok(out) => {
                         let stdout = String::from_utf8_lossy(&out.stdout);
@@ -2209,8 +2334,12 @@ impl SlashCommand for PluginSlashCommandAdapter {
 
 #[async_trait]
 impl SlashCommand for DoctorCommand {
-    fn name(&self) -> &str { "doctor" }
-    fn description(&self) -> &str { "Check system health and diagnose issues" }
+    fn name(&self) -> &str {
+        "doctor"
+    }
+    fn description(&self) -> &str {
+        "Check system health and diagnose issues"
+    }
     fn help(&self) -> &str {
         "Usage: /doctor\n\
          Runs a comprehensive system diagnostics check:\n\
@@ -2236,14 +2365,19 @@ impl SlashCommand for DoctorCommand {
 
         // ── API / Auth ──────────────────────────────────────────────────────
         lines.push("Authentication".to_string());
-        let anthropic_auth = ctx.config.resolve_anthropic_auth_async().await.unwrap_or((String::new(), false));
+        let anthropic_auth = ctx
+            .config
+            .resolve_anthropic_auth_async()
+            .await
+            .unwrap_or((String::new(), false));
         let client_config = claurst_api::client::ClientConfig {
             api_key: anthropic_auth.0,
             api_base: ctx.config.resolve_anthropic_api_base(),
             use_bearer_auth: anthropic_auth.1,
             ..Default::default()
         };
-        let provider_registry = claurst_api::ProviderRegistry::from_config(&ctx.config, client_config);
+        let provider_registry =
+            claurst_api::ProviderRegistry::from_config(&ctx.config, client_config);
         let provider_id = claurst_core::ProviderId::new(ctx.config.selected_provider_id());
         match provider_registry.get(&provider_id) {
             Some(provider) => match provider.health_check().await {
@@ -2254,10 +2388,18 @@ impl SlashCommand for DoctorCommand {
                     lines.push(format!("  ⚠ {} is degraded: {}", provider.name(), reason));
                 }
                 Ok(claurst_api::provider_types::ProviderStatus::Unavailable { reason }) => {
-                    lines.push(format!("  ✗ {} is unavailable: {}", provider.name(), reason));
+                    lines.push(format!(
+                        "  ✗ {} is unavailable: {}",
+                        provider.name(),
+                        reason
+                    ));
                 }
                 Err(err) => {
-                    lines.push(format!("  ✗ {} health check failed: {}", provider.name(), err));
+                    lines.push(format!(
+                        "  ✗ {} health check failed: {}",
+                        provider.name(),
+                        err
+                    ));
                 }
             },
             None => {
@@ -2273,7 +2415,10 @@ impl SlashCommand for DoctorCommand {
             }
         }
         // Show which model is active
-        lines.push(format!("  • Active model: {}", ctx.config.effective_model()));
+        lines.push(format!(
+            "  • Active model: {}",
+            ctx.config.effective_model()
+        ));
         lines.push(String::new());
 
         // ── Git ─────────────────────────────────────────────────────────────
@@ -2305,7 +2450,9 @@ impl SlashCommand for DoctorCommand {
                     .to_string();
                 lines.push(format!("  ✓ ripgrep: {first}"));
             }
-            _ => lines.push("  ⚠ ripgrep (rg) not found — Grep tool will fall back to built-in".to_string()),
+            _ => lines.push(
+                "  ⚠ ripgrep (rg) not found — Grep tool will fall back to built-in".to_string(),
+            ),
         }
         lines.push(String::new());
 
@@ -2382,10 +2529,10 @@ impl SlashCommand for DoctorCommand {
                         .and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok())
                     {
                         Some(_) => lines.push(
-                            "  ⚠ settings.json is JSON but has unexpected structure".to_string()
+                            "  ⚠ settings.json is JSON but has unexpected structure".to_string(),
                         ),
                         None => lines.push(
-                            "  ✗ settings.json is invalid JSON — run /config to repair".to_string()
+                            "  ✗ settings.json is invalid JSON — run /config to repair".to_string(),
                         ),
                     }
                 }
@@ -2399,7 +2546,9 @@ impl SlashCommand for DoctorCommand {
         if claude_md.exists() {
             lines.push("  ✓ AGENTS.md present in working directory".to_string());
         } else {
-            lines.push("  • No AGENTS.md in working directory (run /init to create one)".to_string());
+            lines.push(
+                "  • No AGENTS.md in working directory (run /init to create one)".to_string(),
+            );
         }
         lines.push(String::new());
 
@@ -2414,13 +2563,19 @@ impl SlashCommand for DoctorCommand {
             for srv in ctx.config.mcp_servers.iter().take(12) {
                 let status_str = match statuses.get(&srv.name) {
                     Some(claurst_mcp::McpServerStatus::Connected { tool_count }) => {
-                        format!("  ✓ {} — connected ({} tool{})",
-                            srv.name, tool_count, if *tool_count == 1 { "" } else { "s" })
+                        format!(
+                            "  ✓ {} — connected ({} tool{})",
+                            srv.name,
+                            tool_count,
+                            if *tool_count == 1 { "" } else { "s" }
+                        )
                     }
                     Some(claurst_mcp::McpServerStatus::Connecting) => {
                         format!("  ⚠ {} — connecting…", srv.name)
                     }
-                    Some(claurst_mcp::McpServerStatus::Disconnected { last_error: Some(e) }) => {
+                    Some(claurst_mcp::McpServerStatus::Disconnected {
+                        last_error: Some(e),
+                    }) => {
                         format!("  ✗ {} — failed: {}", srv.name, e)
                     }
                     Some(claurst_mcp::McpServerStatus::Disconnected { last_error: None }) => {
@@ -2438,7 +2593,9 @@ impl SlashCommand for DoctorCommand {
             }
         } else {
             // No live manager — just show configured names
-            lines.push(format!("  ✓ {mcp_count} MCP server(s) configured (not yet connected):"));
+            lines.push(format!(
+                "  ✓ {mcp_count} MCP server(s) configured (not yet connected):"
+            ));
             for srv in ctx.config.mcp_servers.iter().take(8) {
                 lines.push(format!("    - {}", srv.name));
             }
@@ -2454,8 +2611,10 @@ impl SlashCommand for DoctorCommand {
         if hook_count == 0 {
             lines.push("  • No hooks configured".to_string());
         } else {
-            lines.push(format!("  ✓ {hook_count} hook(s) configured across {} event(s)",
-                ctx.config.hooks.len()));
+            lines.push(format!(
+                "  ✓ {hook_count} hook(s) configured across {} event(s)",
+                ctx.config.hooks.len()
+            ));
         }
         lines.push(String::new());
 
@@ -2469,15 +2628,21 @@ impl SlashCommand for DoctorCommand {
         let allowed_count = ctx.config.allowed_tools.len();
         let denied_count = ctx.config.disallowed_tools.len();
         // Tools not in allowed or denied lists require user confirmation
-        let explicit_tools: std::collections::HashSet<&str> = ctx.config.allowed_tools.iter()
+        let explicit_tools: std::collections::HashSet<&str> = ctx
+            .config
+            .allowed_tools
+            .iter()
             .chain(ctx.config.disallowed_tools.iter())
             .map(|s| s.as_str())
             .collect();
-        let confirm_count = all_tool_names.iter()
+        let confirm_count = all_tool_names
+            .iter()
             .filter(|n| !explicit_tools.contains(n.as_str()))
             .count();
         let mode_label = match ctx.config.permission_mode {
-            claurst_core::PermissionMode::BypassPermissions => "bypass-permissions (no confirmation required)",
+            claurst_core::PermissionMode::BypassPermissions => {
+                "bypass-permissions (no confirmation required)"
+            }
             claurst_core::PermissionMode::AcceptEdits => "accept-edits (file edits auto-approved)",
             claurst_core::PermissionMode::Plan => "plan (read-only, no writes)",
             claurst_core::PermissionMode::Default => "default (confirm destructive actions)",
@@ -2485,17 +2650,24 @@ impl SlashCommand for DoctorCommand {
         lines.push(format!("  • Mode: {mode_label}"));
         lines.push(format!("  • Total built-in tools: {total_tools}"));
         if allowed_count > 0 {
-            lines.push(format!("  ✓ Always allowed: {} tool(s) — {}",
+            lines.push(format!(
+                "  ✓ Always allowed: {} tool(s) — {}",
                 allowed_count,
-                ctx.config.allowed_tools.join(", ")));
+                ctx.config.allowed_tools.join(", ")
+            ));
         }
         if denied_count > 0 {
-            lines.push(format!("  ✗ Always denied: {} tool(s) — {}",
+            lines.push(format!(
+                "  ✗ Always denied: {} tool(s) — {}",
                 denied_count,
-                ctx.config.disallowed_tools.join(", ")));
+                ctx.config.disallowed_tools.join(", ")
+            ));
         }
         if ctx.config.permission_mode == claurst_core::PermissionMode::Default {
-            lines.push(format!("  ⚠ Require confirmation: {} tool(s)", confirm_count));
+            lines.push(format!(
+                "  ⚠ Require confirmation: {} tool(s)",
+                confirm_count
+            ));
         }
         lines.push(String::new());
 
@@ -2518,8 +2690,12 @@ impl SlashCommand for DoctorCommand {
 
 #[async_trait]
 impl SlashCommand for LoginCommand {
-    fn name(&self) -> &str { "login" }
-    fn description(&self) -> &str { "Authenticate with Anthropic or Codex (multi-account)" }
+    fn name(&self) -> &str {
+        "login"
+    }
+    fn description(&self) -> &str {
+        "Authenticate with Anthropic or Codex (multi-account)"
+    }
     fn help(&self) -> &str {
         "Usage: /login [--console] [--codex] [--label <name>]\n\n\
          Start an OAuth login. By default authenticates with Claude.ai. Pass\n\
@@ -2565,8 +2741,12 @@ fn parse_label_arg(tokens: &[&str]) -> Option<String> {
 
 #[async_trait]
 impl SlashCommand for LogoutCommand {
-    fn name(&self) -> &str { "logout" }
-    fn description(&self) -> &str { "Clear credentials for the active account" }
+    fn name(&self) -> &str {
+        "logout"
+    }
+    fn description(&self) -> &str {
+        "Clear credentials for the active account"
+    }
     fn help(&self) -> &str {
         "Usage: /logout [--codex] [--all]\n\n\
          By default removes the active Anthropic account. `--codex` targets\n\
@@ -2612,7 +2792,9 @@ impl SlashCommand for LogoutCommand {
             for id in &ids {
                 let _ = registry.remove(claurst_core::accounts::PROVIDER_ANTHROPIC, id);
             }
-            let mut settings = claurst_core::config::Settings::load().await.unwrap_or_default();
+            let mut settings = claurst_core::config::Settings::load()
+                .await
+                .unwrap_or_default();
             settings.config.api_key = None;
             let _ = settings.save().await;
             ctx.config.api_key = None;
@@ -2625,7 +2807,9 @@ impl SlashCommand for LogoutCommand {
         if let Err(e) = claurst_core::oauth::OAuthTokens::clear().await {
             return CommandResult::Error(format!("Failed to clear OAuth tokens: {}", e));
         }
-        let mut settings = claurst_core::config::Settings::load().await.unwrap_or_default();
+        let mut settings = claurst_core::config::Settings::load()
+            .await
+            .unwrap_or_default();
         settings.config.api_key = None;
         if let Err(e) = settings.save().await {
             return CommandResult::Error(format!("Failed to update settings: {}", e));
@@ -2641,8 +2825,12 @@ pub struct AccountsCommand;
 
 #[async_trait]
 impl SlashCommand for AccountsCommand {
-    fn name(&self) -> &str { "accounts" }
-    fn description(&self) -> &str { "List stored Anthropic and Codex accounts" }
+    fn name(&self) -> &str {
+        "accounts"
+    }
+    fn description(&self) -> &str {
+        "List stored Anthropic and Codex accounts"
+    }
     fn help(&self) -> &str {
         "Usage: /accounts\n\n\
          Lists every stored Anthropic and Codex account along with the\n\
@@ -2688,8 +2876,12 @@ pub struct SwitchCommand;
 
 #[async_trait]
 impl SlashCommand for SwitchCommand {
-    fn name(&self) -> &str { "switch" }
-    fn description(&self) -> &str { "Switch the active account for a provider" }
+    fn name(&self) -> &str {
+        "switch"
+    }
+    fn description(&self) -> &str {
+        "Switch the active account for a provider"
+    }
     fn help(&self) -> &str {
         "Usage: /switch [--codex] <profile-id>\n\n\
          Make a stored account active. Defaults to Anthropic; pass `--codex`\n\
@@ -2717,10 +2909,9 @@ impl SlashCommand for SwitchCommand {
 
         let mut registry = claurst_core::accounts::AccountRegistry::load();
         match registry.switch_to(provider, id) {
-            Ok(()) => CommandResult::Message(format!(
-                "Switched {} active account to '{}'.",
-                display, id
-            )),
+            Ok(()) => {
+                CommandResult::Message(format!("Switched {} active account to '{}'.", display, id))
+            }
             Err(e) => CommandResult::Error(format!("{}", e)),
         }
     }
@@ -2730,8 +2921,12 @@ impl SlashCommand for SwitchCommand {
 
 #[async_trait]
 impl SlashCommand for RefreshCommand {
-    fn name(&self) -> &str { "refresh" }
-    fn description(&self) -> &str { "Clear saved provider auth and model caches" }
+    fn name(&self) -> &str {
+        "refresh"
+    }
+    fn description(&self) -> &str {
+        "Clear saved provider auth and model caches"
+    }
     fn help(&self) -> &str {
         "Usage: /refresh\n\n\
          Clears saved provider credentials, provider/model selection, and model caches, then rebuilds the live runtime state.\n\
@@ -2763,8 +2958,12 @@ fn parse_speech_level(args: &str) -> String {
 
 #[async_trait]
 impl SlashCommand for CavemanCommand {
-    fn name(&self) -> &str { "caveman" }
-    fn description(&self) -> &str { "Caveman speech mode — why use many token when few token do trick" }
+    fn name(&self) -> &str {
+        "caveman"
+    }
+    fn description(&self) -> &str {
+        "Caveman speech mode — why use many token when few token do trick"
+    }
     fn help(&self) -> &str {
         "Usage: /caveman [lite|full|ultra]\n\n\
          Activates caveman speech mode that cuts ~75% of output tokens.\n\
@@ -2775,14 +2974,21 @@ impl SlashCommand for CavemanCommand {
     }
     async fn execute(&self, args: &str, _ctx: &mut CommandContext) -> CommandResult {
         let level = parse_speech_level(args);
-        CommandResult::SpeechMode { mode: Some("caveman".to_string()), level }
+        CommandResult::SpeechMode {
+            mode: Some("caveman".to_string()),
+            level,
+        }
     }
 }
 
 #[async_trait]
 impl SlashCommand for RockyCommand {
-    fn name(&self) -> &str { "rocky" }
-    fn description(&self) -> &str { "Rocky speech mode — Eridian alien engineer from Project Hail Mary. Save big token. Good good good." }
+    fn name(&self) -> &str {
+        "rocky"
+    }
+    fn description(&self) -> &str {
+        "Rocky speech mode — Eridian alien engineer from Project Hail Mary. Save big token. Good good good."
+    }
     fn help(&self) -> &str {
         "Usage: /rocky [lite|full|ultra]\n\n\
          Speak like Rocky from Project Hail Mary. Saves big token. Amaze amaze amaze.\n\
@@ -2793,19 +2999,29 @@ impl SlashCommand for RockyCommand {
     }
     async fn execute(&self, args: &str, _ctx: &mut CommandContext) -> CommandResult {
         let level = parse_speech_level(args);
-        CommandResult::SpeechMode { mode: Some("rocky".to_string()), level }
+        CommandResult::SpeechMode {
+            mode: Some("rocky".to_string()),
+            level,
+        }
     }
 }
 
 #[async_trait]
 impl SlashCommand for NormalCommand {
-    fn name(&self) -> &str { "normal" }
-    fn description(&self) -> &str { "Deactivate speech mode (caveman/rocky)" }
+    fn name(&self) -> &str {
+        "normal"
+    }
+    fn description(&self) -> &str {
+        "Deactivate speech mode (caveman/rocky)"
+    }
     fn help(&self) -> &str {
         "Usage: /normal\n\nDeactivate any active speech mode and return to normal output."
     }
     async fn execute(&self, _args: &str, _ctx: &mut CommandContext) -> CommandResult {
-        CommandResult::SpeechMode { mode: None, level: "full".to_string() }
+        CommandResult::SpeechMode {
+            mode: None,
+            level: "full".to_string(),
+        }
     }
 }
 
@@ -2813,8 +3029,12 @@ impl SlashCommand for NormalCommand {
 
 #[async_trait]
 impl SlashCommand for InitCommand {
-    fn name(&self) -> &str { "init" }
-    fn description(&self) -> &str { "Deep recon scan: map project state and produce ATTRACTOR.md + STATE.md" }
+    fn name(&self) -> &str {
+        "init"
+    }
+    fn description(&self) -> &str {
+        "Deep recon scan: map project state and produce ATTRACTOR.md + STATE.md"
+    }
     fn help(&self) -> &str {
         "Usage: /init\n\n\
          Performs a deep recon scan of the project. Reads the project structure,\n\
@@ -2841,7 +3061,7 @@ impl SlashCommand for InitCommand {
              This is the mutable *what* — it updates as the project evolves.\n\n\
              Both files should reflect what you actually found during the scan, not\n\
              generic placeholders. Be specific and grounded in the codebase reality."
-                .to_string()
+                .to_string(),
         )
     }
 }
@@ -2850,8 +3070,12 @@ impl SlashCommand for InitCommand {
 
 #[async_trait]
 impl SlashCommand for ReviewCommand {
-    fn name(&self) -> &str { "review" }
-    fn description(&self) -> &str { "Review code changes via LLM and optionally post to GitHub PR" }
+    fn name(&self) -> &str {
+        "review"
+    }
+    fn description(&self) -> &str {
+        "Review code changes via LLM and optionally post to GitHub PR"
+    }
     fn help(&self) -> &str {
         "Usage: /review [base-ref]\n\n\
          Runs `git diff <base>...HEAD` (or `git diff --cached` when no base is given),\n\
@@ -2895,10 +3119,7 @@ impl SlashCommand for ReviewCommand {
                 }
                 Ok(o) => {
                     let stderr = String::from_utf8_lossy(&o.stderr);
-                    return CommandResult::Error(format!(
-                        "git diff failed: {}",
-                        stderr.trim()
-                    ));
+                    return CommandResult::Error(format!("git diff failed: {}", stderr.trim()));
                 }
                 Err(e) => return CommandResult::Error(format!("Failed to run git: {}", e)),
             }
@@ -3061,14 +3282,11 @@ impl SlashCommand for ReviewCommand {
                         Ok(resp) => {
                             let status = resp.status().as_u16();
                             let body = resp.text().await.unwrap_or_default();
-                            github_post_result = Some(format!(
-                                "\nGitHub API returned {}: {}",
-                                status, body
-                            ));
+                            github_post_result =
+                                Some(format!("\nGitHub API returned {}: {}", status, body));
                         }
                         Err(e) => {
-                            github_post_result =
-                                Some(format!("\nFailed to post to GitHub: {}", e));
+                            github_post_result = Some(format!("\nFailed to post to GitHub: {}", e));
                         }
                     }
                 } else {
@@ -3180,8 +3398,12 @@ fn parse_github_remote_url(url: &str) -> Option<(String, String)> {
 
 #[async_trait]
 impl SlashCommand for ImportConfigCommand {
-    fn name(&self) -> &str { "import-config" }
-    fn description(&self) -> &str { "Import CLAUDE.md and settings.json from ~/.claude" }
+    fn name(&self) -> &str {
+        "import-config"
+    }
+    fn description(&self) -> &str {
+        "Import CLAUDE.md and settings.json from ~/.claude"
+    }
     fn help(&self) -> &str {
         "Usage: /import-config\n\
          Import user-level Claude Code configuration from ~/.claude:\n\
@@ -3199,8 +3421,12 @@ impl SlashCommand for ImportConfigCommand {
 
 #[async_trait]
 impl SlashCommand for HooksCommand {
-    fn name(&self) -> &str { "hooks" }
-    fn description(&self) -> &str { "Show configured event hooks" }
+    fn name(&self) -> &str {
+        "hooks"
+    }
+    fn description(&self) -> &str {
+        "Show configured event hooks"
+    }
     fn help(&self) -> &str {
         "Usage: /hooks\n\
          Show hooks configured in settings.json under 'hooks'.\n\
@@ -3239,8 +3465,12 @@ impl SlashCommand for HooksCommand {
 
 #[async_trait]
 impl SlashCommand for McpCommand {
-    fn name(&self) -> &str { "mcp" }
-    fn description(&self) -> &str { "Show MCP server status and manage connections" }
+    fn name(&self) -> &str {
+        "mcp"
+    }
+    fn description(&self) -> &str {
+        "Show MCP server status and manage connections"
+    }
     fn help(&self) -> &str {
         "Usage: /mcp [list|status|auth <server>|connect <server>|logs <server>|resources|prompts|get-prompt ...]\n\n\
          Manages Model Context Protocol (MCP) servers.\n\
@@ -3371,7 +3601,7 @@ impl SlashCommand for McpCommand {
                 output.push_str(
                     "\nNote: MCP manager is not active in this session.\n\
                      Restart Claurst to connect to MCP servers.\n\
-                     Use /mcp connect <server> to retry a single server."
+                     Use /mcp connect <server> to retry a single server.",
                 );
             }
             return CommandResult::Message(output);
@@ -3411,7 +3641,7 @@ impl SlashCommand for McpCommand {
         }
         output.push_str(
             "\nSubcommands: status | auth <server> | connect <server> | logs <server>\n\
-             Also: resources | prompts | get-prompt <server> <prompt> [key=val ...]"
+             Also: resources | prompts | get-prompt <server> <prompt> [key=val ...]",
         );
         CommandResult::Message(output)
     }
@@ -3425,15 +3655,29 @@ impl McpCommand {
     ///
     /// For stdio servers: shows env-var auth instructions.
     async fn handle_auth(server_name: &str, ctx: &CommandContext) -> CommandResult {
-        let srv = match ctx.config.mcp_servers.iter().find(|s| s.name == server_name) {
+        let srv = match ctx
+            .config
+            .mcp_servers
+            .iter()
+            .find(|s| s.name == server_name)
+        {
             Some(s) => s,
             None => {
-                let configured: Vec<&str> = ctx.config.mcp_servers.iter().map(|s| s.name.as_str()).collect();
+                let configured: Vec<&str> = ctx
+                    .config
+                    .mcp_servers
+                    .iter()
+                    .map(|s| s.name.as_str())
+                    .collect();
                 return CommandResult::Error(format!(
                     "No MCP server named '{}' is configured.\n\
                      Configured servers: {}",
                     server_name,
-                    if configured.is_empty() { "(none)".to_string() } else { configured.join(", ") }
+                    if configured.is_empty() {
+                        "(none)".to_string()
+                    } else {
+                        configured.join(", ")
+                    }
                 ));
             }
         };
@@ -3465,7 +3709,10 @@ impl McpCommand {
 
         if let Some(manager) = &ctx.mcp_manager {
             use claurst_mcp::McpServerStatus;
-            if matches!(manager.server_status(server_name), McpServerStatus::Connecting) {
+            if matches!(
+                manager.server_status(server_name),
+                McpServerStatus::Connecting
+            ) {
                 return CommandResult::Message(format!(
                     "MCP server '{}' is currently connecting — try again shortly.",
                     server_name
@@ -3546,22 +3793,31 @@ impl McpCommand {
     fn handle_tools(server_filter: Option<&str>, ctx: &CommandContext) -> CommandResult {
         let manager = match ctx.mcp_manager.as_ref() {
             Some(m) => m,
-            None => return CommandResult::Message(
-                "MCP manager is not active. No tool information available.\n\
-                 Restart Claurst to connect to MCP servers.".to_string()
-            ),
+            None => {
+                return CommandResult::Message(
+                    "MCP manager is not active. No tool information available.\n\
+                 Restart Claurst to connect to MCP servers."
+                        .to_string(),
+                )
+            }
         };
 
         let all_tools = manager.all_tool_definitions();
         let tools: Vec<_> = if let Some(filter) = server_filter {
-            all_tools.iter().filter(|(srv, _)| srv.as_str() == filter).collect()
+            all_tools
+                .iter()
+                .filter(|(srv, _)| srv.as_str() == filter)
+                .collect()
         } else {
             all_tools.iter().collect()
         };
 
         if tools.is_empty() {
             return CommandResult::Message(if let Some(filter) = server_filter {
-                format!("No tools available from server '{}' (not connected or has no tools).", filter)
+                format!(
+                    "No tools available from server '{}' (not connected or has no tools).",
+                    filter
+                )
             } else {
                 "No tools available from any connected MCP server.".to_string()
             });
@@ -3580,9 +3836,16 @@ impl McpCommand {
                 last_server = server.as_str();
             }
             // Strip the "servername_" prefix for display
-            let bare = tool.name.strip_prefix(&format!("{}_", server)).unwrap_or(&tool.name);
+            let bare = tool
+                .name
+                .strip_prefix(&format!("{}_", server))
+                .unwrap_or(&tool.name);
             let preview: String = tool.description.chars().take(80).collect();
-            let ellipsis = if tool.description.len() > 80 { "…" } else { "" };
+            let ellipsis = if tool.description.len() > 80 {
+                "…"
+            } else {
+                ""
+            };
             out.push_str(&format!("  {}\n    {}{}\n", bare, preview, ellipsis));
         }
         CommandResult::Message(out)
@@ -3592,12 +3855,21 @@ impl McpCommand {
     async fn handle_connect(server_name: &str, ctx: &CommandContext) -> CommandResult {
         // Validate that the server is configured.
         if !ctx.config.mcp_servers.iter().any(|s| s.name == server_name) {
-            let names: Vec<&str> = ctx.config.mcp_servers.iter().map(|s| s.name.as_str()).collect();
+            let names: Vec<&str> = ctx
+                .config
+                .mcp_servers
+                .iter()
+                .map(|s| s.name.as_str())
+                .collect();
             return CommandResult::Error(format!(
                 "No MCP server named '{}' is configured.\n\
                  Configured servers: {}",
                 server_name,
-                if names.is_empty() { "(none)".to_string() } else { names.join(", ") }
+                if names.is_empty() {
+                    "(none)".to_string()
+                } else {
+                    names.join(", ")
+                }
             ));
         }
 
@@ -3617,21 +3889,17 @@ impl McpCommand {
                 let current = manager.server_status(server_name);
                 use claurst_mcp::McpServerStatus;
                 match current {
-                    McpServerStatus::Connected { tool_count } => {
-                        CommandResult::Message(format!(
-                            "MCP server '{}' is already connected ({} tool{} available).",
-                            server_name,
-                            tool_count,
-                            if tool_count == 1 { "" } else { "s" }
-                        ))
-                    }
-                    McpServerStatus::Connecting => {
-                        CommandResult::Message(format!(
-                            "MCP server '{}' is already in the process of connecting.\n\
+                    McpServerStatus::Connected { tool_count } => CommandResult::Message(format!(
+                        "MCP server '{}' is already connected ({} tool{} available).",
+                        server_name,
+                        tool_count,
+                        if tool_count == 1 { "" } else { "s" }
+                    )),
+                    McpServerStatus::Connecting => CommandResult::Message(format!(
+                        "MCP server '{}' is already in the process of connecting.\n\
                              Check back in a moment.",
-                            server_name
-                        ))
-                    }
+                        server_name
+                    )),
                     McpServerStatus::Disconnected { .. } | McpServerStatus::Failed { .. } => {
                         // The McpManager doesn't expose a reconnect method — it's built at
                         // startup.  Inform the user and suggest a restart.
@@ -3658,16 +3926,28 @@ impl McpCommand {
     fn handle_logs(server_name: &str, ctx: &CommandContext) -> CommandResult {
         // Validate server name.
         if !ctx.config.mcp_servers.iter().any(|s| s.name == server_name) {
-            let names: Vec<&str> = ctx.config.mcp_servers.iter().map(|s| s.name.as_str()).collect();
+            let names: Vec<&str> = ctx
+                .config
+                .mcp_servers
+                .iter()
+                .map(|s| s.name.as_str())
+                .collect();
             return CommandResult::Error(format!(
                 "No MCP server named '{}' is configured.\n\
                  Configured servers: {}",
                 server_name,
-                if names.is_empty() { "(none)".to_string() } else { names.join(", ") }
+                if names.is_empty() {
+                    "(none)".to_string()
+                } else {
+                    names.join(", ")
+                }
             ));
         }
 
-        let mut lines = vec![format!("MCP Server Logs — '{}'\n──────────────────────", server_name)];
+        let mut lines = vec![format!(
+            "MCP Server Logs — '{}'\n──────────────────────",
+            server_name
+        )];
 
         if let Some(manager) = &ctx.mcp_manager {
             use claurst_mcp::McpServerStatus;
@@ -3675,30 +3955,52 @@ impl McpCommand {
             lines.push(format!("Current status:  {}", status.display()));
 
             match &status {
-                McpServerStatus::Disconnected { last_error: Some(e) } => {
+                McpServerStatus::Disconnected {
+                    last_error: Some(e),
+                } => {
                     lines.push(format!("\nLast connection error:\n  {}", e));
                     lines.push(String::new());
                     lines.push("Troubleshooting:".to_string());
-                    lines.push(format!("  /mcp auth {}    — check authentication", server_name));
-                    lines.push(format!("  /mcp connect {} — attempt reconnect", server_name));
+                    lines.push(format!(
+                        "  /mcp auth {}    — check authentication",
+                        server_name
+                    ));
+                    lines.push(format!(
+                        "  /mcp connect {} — attempt reconnect",
+                        server_name
+                    ));
                 }
                 McpServerStatus::Failed { error, retry_at } => {
                     lines.push(format!("\nConnection failure:\n  {}", error));
-                    let retry_secs = retry_at.saturating_duration_since(std::time::Instant::now()).as_secs();
+                    let retry_secs = retry_at
+                        .saturating_duration_since(std::time::Instant::now())
+                        .as_secs();
                     if retry_secs > 0 {
                         lines.push(format!("  Automatic retry in {}s", retry_secs));
                     }
                     let _ = retry_at; // used above
                 }
                 McpServerStatus::Connected { tool_count } => {
-                    lines.push(format!("\nServer is healthy — {} tool{} available.", tool_count, if *tool_count == 1 { "" } else { "s" }));
+                    lines.push(format!(
+                        "\nServer is healthy — {} tool{} available.",
+                        tool_count,
+                        if *tool_count == 1 { "" } else { "s" }
+                    ));
                     // Show catalog info if available.
                     if let Some(catalog) = manager.server_catalog(server_name) {
                         if !catalog.resources.is_empty() {
-                            lines.push(format!("Resources ({}): {}", catalog.resource_count, catalog.resources.join(", ")));
+                            lines.push(format!(
+                                "Resources ({}): {}",
+                                catalog.resource_count,
+                                catalog.resources.join(", ")
+                            ));
                         }
                         if !catalog.prompts.is_empty() {
-                            lines.push(format!("Prompts ({}): {}", catalog.prompt_count, catalog.prompts.join(", ")));
+                            lines.push(format!(
+                                "Prompts ({}): {}",
+                                catalog.prompt_count,
+                                catalog.prompts.join(", ")
+                            ));
                         }
                     }
                 }
@@ -3725,9 +4027,12 @@ impl McpCommand {
 
         // Hint about log files.
         lines.push(String::new());
-        lines.push("Note: Detailed stdio output from MCP server processes is not\n\
+        lines.push(
+            "Note: Detailed stdio output from MCP server processes is not\n\
                     captured by the manager. Run the server command directly in a\n\
-                    terminal to see its full output.".to_string());
+                    terminal to see its full output."
+                .to_string(),
+        );
 
         CommandResult::Message(lines.join("\n"))
     }
@@ -3745,7 +4050,8 @@ impl McpCommand {
                 let resources = manager.list_all_resources(filter).await;
                 if resources.is_empty() {
                     return Some(CommandResult::Message(
-                        "No resources available (servers may not support resources/list).".to_string()
+                        "No resources available (servers may not support resources/list)."
+                            .to_string(),
                     ));
                 }
                 let mut out = format!("MCP Resources ({})\n──────────────────\n", resources.len());
@@ -3767,21 +4073,36 @@ impl McpCommand {
                 let prompts = manager.list_all_prompts(filter).await;
                 if prompts.is_empty() {
                     return Some(CommandResult::Message(
-                        "No prompt templates available (servers may not support prompts/list).".to_string()
+                        "No prompt templates available (servers may not support prompts/list)."
+                            .to_string(),
                     ));
                 }
-                let mut out = format!("MCP Prompt Templates ({})\n─────────────────────────\n", prompts.len());
+                let mut out = format!(
+                    "MCP Prompt Templates ({})\n─────────────────────────\n",
+                    prompts.len()
+                );
                 for p in &prompts {
                     let server = p.get("server").and_then(|v| v.as_str()).unwrap_or("?");
                     let name = p.get("name").and_then(|v| v.as_str()).unwrap_or("?");
                     let desc = p.get("description").and_then(|v| v.as_str()).unwrap_or("");
-                    let args: Vec<String> = p.get("arguments")
+                    let args: Vec<String> = p
+                        .get("arguments")
                         .and_then(|a| a.as_array())
-                        .map(|arr| arr.iter()
-                            .filter_map(|a| a.get("name").and_then(|n| n.as_str()).map(|s| s.to_string()))
-                            .collect())
+                        .map(|arr| {
+                            arr.iter()
+                                .filter_map(|a| {
+                                    a.get("name")
+                                        .and_then(|n| n.as_str())
+                                        .map(|s| s.to_string())
+                                })
+                                .collect()
+                        })
                         .unwrap_or_default();
-                    let args_display = if args.is_empty() { String::new() } else { format!(" ({})", args.join(", ")) };
+                    let args_display = if args.is_empty() {
+                        String::new()
+                    } else {
+                        format!(" ({})", args.join(", "))
+                    };
                     if desc.is_empty() {
                         out.push_str(&format!("  [{server}] {name}{args_display}\n"));
                     } else {
@@ -3795,13 +4116,22 @@ impl McpCommand {
                 // /mcp get-prompt <server> <prompt-name> [key=val key2=val2 ...]
                 let server = match parts.get(1) {
                     Some(s) => *s,
-                    None => return Some(CommandResult::Error("Usage: /mcp get-prompt <server> <prompt> [key=value ...]".to_string())),
+                    None => {
+                        return Some(CommandResult::Error(
+                            "Usage: /mcp get-prompt <server> <prompt> [key=value ...]".to_string(),
+                        ))
+                    }
                 };
                 let prompt_name = match parts.get(2) {
                     Some(p) => *p,
-                    None => return Some(CommandResult::Error("Usage: /mcp get-prompt <server> <prompt> [key=value ...]".to_string())),
+                    None => {
+                        return Some(CommandResult::Error(
+                            "Usage: /mcp get-prompt <server> <prompt> [key=value ...]".to_string(),
+                        ))
+                    }
                 };
-                let mut args: std::collections::HashMap<String, String> = std::collections::HashMap::new();
+                let mut args: std::collections::HashMap<String, String> =
+                    std::collections::HashMap::new();
                 if let Some(kv_str) = parts.get(3) {
                     for kv in kv_str.split_whitespace() {
                         if let Some((k, v)) = kv.split_once('=') {
@@ -3816,7 +4146,9 @@ impl McpCommand {
                         for msg in &result.messages {
                             let text = match &msg.content {
                                 claurst_mcp::PromptMessageContent::Text { text } => text.clone(),
-                                claurst_mcp::PromptMessageContent::Image { .. } => "[image]".to_string(),
+                                claurst_mcp::PromptMessageContent::Image { .. } => {
+                                    "[image]".to_string()
+                                }
                                 claurst_mcp::PromptMessageContent::Resource { resource } => {
                                     resource.to_string()
                                 }
@@ -3825,7 +4157,10 @@ impl McpCommand {
                         }
                         Some(CommandResult::UserMessage(injected.trim().to_string()))
                     }
-                    Err(e) => Some(CommandResult::Error(format!("Failed to get prompt '{}' from '{}': {}", prompt_name, server, e))),
+                    Err(e) => Some(CommandResult::Error(format!(
+                        "Failed to get prompt '{}' from '{}': {}",
+                        prompt_name, server, e
+                    ))),
                 }
             }
             _ => None,
@@ -3837,8 +4172,12 @@ impl McpCommand {
 
 #[async_trait]
 impl SlashCommand for PermissionsCommand {
-    fn name(&self) -> &str { "permissions" }
-    fn description(&self) -> &str { "View or change tool permission settings" }
+    fn name(&self) -> &str {
+        "permissions"
+    }
+    fn description(&self) -> &str {
+        "View or change tool permission settings"
+    }
     fn help(&self) -> &str {
         "Usage: /permissions [set <mode>|allow <tool>|deny <tool>|reset]\n\n\
          Modes: default, accept-edits, bypass-permissions, plan\n\n\
@@ -3873,9 +4212,7 @@ impl SlashCommand for PermissionsCommand {
                  Use /permissions set <mode> to change the permission mode.\n\
                  Use /permissions allow|deny <tool> to override individual tools.\n\
                  Use /permissions reset to clear all overrides.",
-                ctx.config.permission_mode,
-                allowed_display,
-                denied_display,
+                ctx.config.permission_mode, allowed_display, denied_display,
             ));
         }
 
@@ -3887,16 +4224,24 @@ impl SlashCommand for PermissionsCommand {
             "set" => {
                 let mode = match arg.to_lowercase().as_str() {
                     "default" => claurst_core::config::PermissionMode::Default,
-                    "accept-edits" | "accept_edits" => claurst_core::config::PermissionMode::AcceptEdits,
-                    "bypass-permissions" | "bypass_permissions" => claurst_core::config::PermissionMode::BypassPermissions,
+                    "accept-edits" | "accept_edits" => {
+                        claurst_core::config::PermissionMode::AcceptEdits
+                    }
+                    "bypass-permissions" | "bypass_permissions" => {
+                        claurst_core::config::PermissionMode::BypassPermissions
+                    }
                     "plan" => claurst_core::config::PermissionMode::Plan,
-                    _ => return CommandResult::Error(
-                        "Mode must be: default, accept-edits, bypass-permissions, or plan".to_string()
-                    ),
+                    _ => {
+                        return CommandResult::Error(
+                            "Mode must be: default, accept-edits, bypass-permissions, or plan"
+                                .to_string(),
+                        )
+                    }
                 };
                 let mut new_config = ctx.config.clone();
                 new_config.permission_mode = mode.clone();
-                if let Err(e) = save_settings_mutation(|s| s.config.permission_mode = mode.clone()) {
+                if let Err(e) = save_settings_mutation(|s| s.config.permission_mode = mode.clone())
+                {
                     return CommandResult::Error(format!("Failed to save: {}", e));
                 }
                 CommandResult::ConfigChangeMessage(
@@ -3973,8 +4318,12 @@ impl SlashCommand for PermissionsCommand {
 
 #[async_trait]
 impl SlashCommand for PlanCommand {
-    fn name(&self) -> &str { "plan" }
-    fn description(&self) -> &str { "Enter plan mode – model outputs a plan for approval before acting" }
+    fn name(&self) -> &str {
+        "plan"
+    }
+    fn description(&self) -> &str {
+        "Enter plan mode – model outputs a plan for approval before acting"
+    }
     fn help(&self) -> &str {
         "Usage: /plan [description]\n\n\
          Switches to plan mode where the model will create a detailed plan before executing.\n\
@@ -3985,7 +4334,7 @@ impl SlashCommand for PlanCommand {
     async fn execute(&self, args: &str, _ctx: &mut CommandContext) -> CommandResult {
         if args.trim() == "exit" {
             return CommandResult::UserMessage(
-                "[Exiting plan mode. Resuming normal execution.]".to_string()
+                "[Exiting plan mode. Resuming normal execution.]".to_string(),
             );
         }
         let task_desc = if args.is_empty() {
@@ -4006,13 +4355,20 @@ impl SlashCommand for PlanCommand {
 
 #[async_trait]
 impl SlashCommand for TasksCommand {
-    fn name(&self) -> &str { "tasks" }
-    fn aliases(&self) -> Vec<&str> { vec!["bashes"] }
-    fn description(&self) -> &str { "List and manage background tasks" }
+    fn name(&self) -> &str {
+        "tasks"
+    }
+    fn aliases(&self) -> Vec<&str> {
+        vec!["bashes"]
+    }
+    fn description(&self) -> &str {
+        "List and manage background tasks"
+    }
 
     async fn execute(&self, _args: &str, _ctx: &mut CommandContext) -> CommandResult {
         CommandResult::UserMessage(
-            "Please list all current tasks using the TaskList tool and show their status.".to_string()
+            "Please list all current tasks using the TaskList tool and show their status."
+                .to_string(),
         )
     }
 }
@@ -4021,9 +4377,15 @@ impl SlashCommand for TasksCommand {
 
 #[async_trait]
 impl SlashCommand for SessionCommand {
-    fn name(&self) -> &str { "session" }
-    fn aliases(&self) -> Vec<&str> { vec!["remote"] }
-    fn description(&self) -> &str { "Show or manage conversation sessions" }
+    fn name(&self) -> &str {
+        "session"
+    }
+    fn aliases(&self) -> Vec<&str> {
+        vec!["remote"]
+    }
+    fn description(&self) -> &str {
+        "Show or manage conversation sessions"
+    }
 
     async fn execute(&self, args: &str, ctx: &mut CommandContext) -> CommandResult {
         match args.trim() {
@@ -4087,7 +4449,11 @@ impl SlashCommand for SessionCommand {
                         for sess in sessions.iter().take(5) {
                             let updated = sess.updated_at.format("%Y-%m-%d %H:%M").to_string();
                             let id_short = &sess.id[..sess.id.len().min(8)];
-                            let marker = if sess.id == ctx.session_id { " ◀ current" } else { "" };
+                            let marker = if sess.id == ctx.session_id {
+                                " ◀ current"
+                            } else {
+                                ""
+                            };
                             output.push_str(&format!(
                                 "  {} | {} | {} messages | {}{}\n",
                                 id_short,
@@ -4097,13 +4463,18 @@ impl SlashCommand for SessionCommand {
                                 marker,
                             ));
                         }
-                        output.push_str("\nUse /session list for all sessions, /resume <id> to switch.");
+                        output.push_str(
+                            "\nUse /session list for all sessions, /resume <id> to switch.",
+                        );
                     }
 
                     CommandResult::Message(output)
                 }
             }
-            _ => CommandResult::Error(format!("Unknown subcommand: {}\n\nUsage: /session [list]", args)),
+            _ => CommandResult::Error(format!(
+                "Unknown subcommand: {}\n\nUsage: /session [list]",
+                args
+            )),
         }
     }
 }
@@ -4112,8 +4483,12 @@ impl SlashCommand for SessionCommand {
 
 #[async_trait]
 impl SlashCommand for ForkCommand {
-    fn name(&self) -> &str { "fork" }
-    fn description(&self) -> &str { "Fork the current session into a new branch" }
+    fn name(&self) -> &str {
+        "fork"
+    }
+    fn description(&self) -> &str {
+        "Fork the current session into a new branch"
+    }
     fn help(&self) -> &str {
         "Usage: /fork [message_index]\n\n\
          Fork the current session at the specified message index (or at the\n\
@@ -4140,9 +4515,7 @@ impl SlashCommand for ForkCommand {
             "Fork of {}",
             ctx.session_title.as_deref().unwrap_or("session")
         ));
-        new_session.working_dir = Some(
-            ctx.working_dir.to_string_lossy().to_string(),
-        );
+        new_session.working_dir = Some(ctx.working_dir.to_string_lossy().to_string());
 
         let new_id = new_session.id.clone();
         match claurst_core::history::save_session(&new_session).await {
@@ -4159,9 +4532,15 @@ impl SlashCommand for ForkCommand {
 
 #[async_trait]
 impl SlashCommand for ThinkingCommand {
-    fn name(&self) -> &str { "thinking" }
-    fn description(&self) -> &str { "Toggle extended thinking mode" }
-    fn aliases(&self) -> Vec<&str> { vec!["think"] }
+    fn name(&self) -> &str {
+        "thinking"
+    }
+    fn description(&self) -> &str {
+        "Toggle extended thinking mode"
+    }
+    fn aliases(&self) -> Vec<&str> {
+        vec!["think"]
+    }
 
     async fn execute(&self, _args: &str, ctx: &mut CommandContext) -> CommandResult {
         // Extended thinking is configured through the model; just inform the user
@@ -4169,7 +4548,8 @@ impl SlashCommand for ThinkingCommand {
         if model.contains("claude-3-5") || model.contains("claude-3.5") {
             CommandResult::Message(
                 "Extended thinking is not available for Claude 3.5 models.\n\
-                 Use claude-opus-4-6 or claude-sonnet-4-6 for extended thinking.".to_string()
+                 Use claude-opus-4-6 or claude-sonnet-4-6 for extended thinking."
+                    .to_string(),
             )
         } else {
             CommandResult::Message(format!(
@@ -4248,7 +4628,12 @@ fn export_message_to_markdown(
                 'search: for next_msg in all_messages.iter().skip(msg_idx + 1) {
                     if let MessageContent::Blocks(next_blocks) = &next_msg.content {
                         for nb in next_blocks {
-                            if let ContentBlock::ToolResult { tool_use_id, content, is_error } = nb {
+                            if let ContentBlock::ToolResult {
+                                tool_use_id,
+                                content,
+                                is_error,
+                            } = nb
+                            {
                                 if tool_use_id.as_str() == *tool_id {
                                     let text = match content {
                                         ToolResultContent::Text(t) => t.clone(),
@@ -4264,17 +4649,27 @@ fn export_message_to_markdown(
                                             .collect::<Vec<_>>()
                                             .join(""),
                                     };
-                                    let label = if is_error.unwrap_or(false) { "Error" } else { "Output" };
-                                    found_output = Some(format!("**{}:** `{}`\n",
+                                    let label = if is_error.unwrap_or(false) {
+                                        "Error"
+                                    } else {
+                                        "Output"
+                                    };
+                                    found_output = Some(format!(
+                                        "**{}:** `{}`\n",
                                         label,
-                                        text.lines().next().unwrap_or(&text).trim()));
+                                        text.lines().next().unwrap_or(&text).trim()
+                                    ));
                                     break 'search;
                                 }
                             }
                         }
                     }
                 }
-                out.push_str(found_output.as_deref().unwrap_or("**Output:** *(pending)*\n"));
+                out.push_str(
+                    found_output
+                        .as_deref()
+                        .unwrap_or("**Output:** *(pending)*\n"),
+                );
             }
         }
     }
@@ -4288,7 +4683,10 @@ fn build_markdown_export(ctx: &CommandContext) -> String {
     out.push_str("# Conversation Export\n\n");
     out.push_str(&format!("- **Session ID:** {}\n", ctx.session_id));
     out.push_str(&format!("- **Model:** {}\n", ctx.config.effective_model()));
-    out.push_str(&format!("- **Exported:** {}\n", chrono::Utc::now().to_rfc3339()));
+    out.push_str(&format!(
+        "- **Exported:** {}\n",
+        chrono::Utc::now().to_rfc3339()
+    ));
     if let Some(ref title) = ctx.session_title {
         out.push_str(&format!("- **Title:** {}\n", title));
     }
@@ -4323,8 +4721,12 @@ fn build_json_export(ctx: &CommandContext) -> serde_json::Value {
 
 #[async_trait]
 impl SlashCommand for ExportCommand {
-    fn name(&self) -> &str { "export" }
-    fn description(&self) -> &str { "Export conversation to markdown or JSON" }
+    fn name(&self) -> &str {
+        "export"
+    }
+    fn description(&self) -> &str {
+        "Export conversation to markdown or JSON"
+    }
     fn help(&self) -> &str {
         "Usage: /export [--format markdown|json] [--output <file>]\n\n\
          Export the current conversation.\n\n\
@@ -4356,7 +4758,7 @@ impl SlashCommand for ExportCommand {
                         i += 2;
                     } else {
                         return CommandResult::Error(
-                            "--format requires a value: markdown or json".to_string()
+                            "--format requires a value: markdown or json".to_string(),
                         );
                     }
                 }
@@ -4365,9 +4767,7 @@ impl SlashCommand for ExportCommand {
                         output_path = Some(tokens[i + 1].to_string());
                         i += 2;
                     } else {
-                        return CommandResult::Error(
-                            "--output requires a file path".to_string()
-                        );
+                        return CommandResult::Error("--output requires a file path".to_string());
                     }
                 }
                 other if !other.starts_with('-') => {
@@ -4389,7 +4789,8 @@ impl SlashCommand for ExportCommand {
             Some("json") => "json",
             Some(other) => {
                 return CommandResult::Error(format!(
-                    "Unknown format '{}'. Use 'markdown' or 'json'.", other
+                    "Unknown format '{}'. Use 'markdown' or 'json'.",
+                    other
                 ));
             }
             None => {
@@ -4426,7 +4827,11 @@ impl SlashCommand for ExportCommand {
                     format!(
                         "{}.{}",
                         filename,
-                        if resolved_format == "markdown" { "md" } else { "json" }
+                        if resolved_format == "markdown" {
+                            "md"
+                        } else {
+                            "json"
+                        }
                     )
                 } else {
                     filename.to_string()
@@ -4445,9 +4850,9 @@ impl SlashCommand for ExportCommand {
                         ctx.messages.len(),
                         resolved_format,
                     )),
-                    Err(e) => CommandResult::Error(format!(
-                        "Failed to write {}: {}", path.display(), e
-                    )),
+                    Err(e) => {
+                        CommandResult::Error(format!("Failed to write {}: {}", path.display(), e))
+                    }
                 }
             }
             None => {
@@ -4462,7 +4867,9 @@ impl SlashCommand for ExportCommand {
 
 #[async_trait]
 impl SlashCommand for ShareCommand {
-    fn name(&self) -> &str { "share" }
+    fn name(&self) -> &str {
+        "share"
+    }
     fn description(&self) -> &str {
         "Upload the current session as a secret GitHub gist and return a shareable URL"
     }
@@ -4517,7 +4924,11 @@ impl SlashCommand for ShareCommand {
             .chars()
             .filter(|c| c.is_ascii_alphanumeric() || *c == '-' || *c == '_')
             .collect();
-        let stem = if safe_id.is_empty() { "session".to_string() } else { safe_id };
+        let stem = if safe_id.is_empty() {
+            "session".to_string()
+        } else {
+            safe_id
+        };
         let tmp = std::env::temp_dir().join(format!("claurst-session-{stem}.html"));
 
         if let Err(e) = write_session_html(&tmp, &ctx.messages, &meta) {
@@ -4580,9 +4991,7 @@ impl SlashCommand for ShareCommand {
             "Could not auto-open the link. Copy the URL above. The gist is secret (unlisted); delete the gist to revoke access."
         };
 
-        CommandResult::Message(format!(
-            "Share URL: {viewer}\nGist: {gist_url}\n\n{footer}"
-        ))
+        CommandResult::Message(format!("Share URL: {viewer}\nGist: {gist_url}\n\n{footer}"))
     }
 }
 
@@ -4600,7 +5009,10 @@ fn links_url_regex() -> &'static regex::Regex {
 fn strip_trailing_punct(url: &str) -> String {
     let mut s = url.to_string();
     while let Some(c) = s.chars().last() {
-        if matches!(c, '.' | ',' | ';' | ':' | '!' | '?' | ')' | ']' | '}' | '\'' | '"' | '>') {
+        if matches!(
+            c,
+            '.' | ',' | ';' | ':' | '!' | '?' | ')' | ']' | '}' | '\'' | '"' | '>'
+        ) {
             s.pop();
         } else {
             break;
@@ -4642,8 +5054,12 @@ fn extract_session_urls(messages: &[Message]) -> Vec<String> {
 
 #[async_trait]
 impl SlashCommand for LinksCommand {
-    fn name(&self) -> &str { "links" }
-    fn aliases(&self) -> Vec<&str> { vec!["link"] }
+    fn name(&self) -> &str {
+        "links"
+    }
+    fn aliases(&self) -> Vec<&str> {
+        vec!["link"]
+    }
     fn description(&self) -> &str {
         "List URLs in this session and open them in your browser"
     }
@@ -4710,9 +5126,15 @@ impl SlashCommand for LinksCommand {
 
 #[async_trait]
 impl SlashCommand for SkillsCommand {
-    fn name(&self) -> &str { "skills" }
-    fn aliases(&self) -> Vec<&str> { vec!["skill"] }
-    fn description(&self) -> &str { "List available skills in .claurst/commands/" }
+    fn name(&self) -> &str {
+        "skills"
+    }
+    fn aliases(&self) -> Vec<&str> {
+        vec!["skill"]
+    }
+    fn description(&self) -> &str {
+        "List available skills in .claurst/commands/"
+    }
 
     async fn execute(&self, _args: &str, ctx: &mut CommandContext) -> CommandResult {
         let mut found: Vec<String> = Vec::new();
@@ -4770,15 +5192,13 @@ impl SlashCommand for SkillsCommand {
         }
 
         // Include discovered skills from .claurst/skills/ and configured paths/URLs.
-        let discovered = claurst_core::discover_skills(
-            &ctx.working_dir,
-            &ctx.config.skills,
-        );
+        let discovered = claurst_core::discover_skills(&ctx.working_dir, &ctx.config.skills);
 
         let mut output = if found.is_empty() && discovered.is_empty() {
             return CommandResult::Message(
                 "No skills found.\nCreate .md files in .claurst/commands/ to define skills.\n\
-                 Example: .claurst/commands/review.md".to_string(),
+                 Example: .claurst/commands/review.md"
+                    .to_string(),
             );
         } else if found.is_empty() {
             String::new()
@@ -4787,7 +5207,11 @@ impl SlashCommand for SkillsCommand {
             format!(
                 "Available skills ({}):\n{}",
                 found.len(),
-                found.iter().map(|s| format!("  /{}", s)).collect::<Vec<_>>().join("\n")
+                found
+                    .iter()
+                    .map(|s| format!("  /{}", s))
+                    .collect::<Vec<_>>()
+                    .join("\n")
             )
         };
 
@@ -4818,8 +5242,12 @@ impl SlashCommand for SkillsCommand {
 
 #[async_trait]
 impl SlashCommand for RewindCommand {
-    fn name(&self) -> &str { "rewind" }
-    fn description(&self) -> &str { "Interactively select a message to rewind to" }
+    fn name(&self) -> &str {
+        "rewind"
+    }
+    fn description(&self) -> &str {
+        "Interactively select a message to rewind to"
+    }
     fn help(&self) -> &str {
         "Usage: /rewind\n\
          Opens an interactive overlay to select the message to rewind to.\n\
@@ -4828,7 +5256,9 @@ impl SlashCommand for RewindCommand {
 
     async fn execute(&self, _args: &str, ctx: &mut CommandContext) -> CommandResult {
         if ctx.messages.is_empty() {
-            return CommandResult::Message("Nothing to rewind — conversation is empty.".to_string());
+            return CommandResult::Message(
+                "Nothing to rewind — conversation is empty.".to_string(),
+            );
         }
         CommandResult::OpenRewindOverlay
     }
@@ -4838,8 +5268,12 @@ impl SlashCommand for RewindCommand {
 
 #[async_trait]
 impl SlashCommand for StatsCommand {
-    fn name(&self) -> &str { "stats" }
-    fn description(&self) -> &str { "Show token usage and cost statistics" }
+    fn name(&self) -> &str {
+        "stats"
+    }
+    fn description(&self) -> &str {
+        "Show token usage and cost statistics"
+    }
     fn help(&self) -> &str {
         "Usage: /stats\n\n\
          Shows detailed token usage and cost breakdown for the current session,\n\
@@ -4857,15 +5291,21 @@ impl SlashCommand for StatsCommand {
         let model = ctx.config.effective_model();
 
         // Count user/assistant turns separately.
-        let user_turns = ctx.messages.iter()
+        let user_turns = ctx
+            .messages
+            .iter()
             .filter(|m| m.role == claurst_core::types::Role::User)
             .count();
-        let assistant_turns = ctx.messages.iter()
+        let assistant_turns = ctx
+            .messages
+            .iter()
             .filter(|m| m.role == claurst_core::types::Role::Assistant)
             .count();
 
         // Count tool-use invocations.
-        let tool_calls: usize = ctx.messages.iter()
+        let tool_calls: usize = ctx
+            .messages
+            .iter()
             .map(|m| m.get_tool_use_blocks().len())
             .sum();
 
@@ -4916,14 +5356,19 @@ impl SlashCommand for StatsCommand {
 
 #[async_trait]
 impl SlashCommand for FilesCommand {
-    fn name(&self) -> &str { "files" }
-    fn description(&self) -> &str { "List files referenced in the current conversation" }
+    fn name(&self) -> &str {
+        "files"
+    }
+    fn description(&self) -> &str {
+        "List files referenced in the current conversation"
+    }
 
     async fn execute(&self, _args: &str, ctx: &mut CommandContext) -> CommandResult {
         use std::collections::HashSet;
         // Scan message content for file paths (simple heuristic)
         let mut files: HashSet<String> = HashSet::new();
-        let path_re = regex::Regex::new(r#"(?m)([A-Za-z]:[\\/][^\s,;:"'<>]+|/[^\s,;:"'<>]{3,})"#).ok();
+        let path_re =
+            regex::Regex::new(r#"(?m)([A-Za-z]:[\\/][^\s,;:"'<>]+|/[^\s,;:"'<>]{3,})"#).ok();
 
         for msg in &ctx.messages {
             let text = msg.get_all_text();
@@ -4949,7 +5394,11 @@ impl SlashCommand for FilesCommand {
         CommandResult::Message(format!(
             "Referenced files ({}):\n{}",
             sorted.len(),
-            sorted.iter().map(|f| format!("  {}", f)).collect::<Vec<_>>().join("\n")
+            sorted
+                .iter()
+                .map(|f| format!("  {}", f))
+                .collect::<Vec<_>>()
+                .join("\n")
         ))
     }
 }
@@ -4958,8 +5407,12 @@ impl SlashCommand for FilesCommand {
 
 #[async_trait]
 impl SlashCommand for RenameCommand {
-    fn name(&self) -> &str { "rename" }
-    fn description(&self) -> &str { "Rename the current session" }
+    fn name(&self) -> &str {
+        "rename"
+    }
+    fn description(&self) -> &str {
+        "Rename the current session"
+    }
     fn help(&self) -> &str {
         "Usage: /rename [new name]\n\n\
          With a name: sets the session title immediately.\n\
@@ -4991,12 +5444,18 @@ impl SlashCommand for RenameCommand {
             .take(20)
             .filter_map(|m| {
                 let text = m.get_all_text();
-                if text.is_empty() { return None; }
+                if text.is_empty() {
+                    return None;
+                }
                 let role = match m.role {
                     claurst_core::types::Role::User => "User",
                     claurst_core::types::Role::Assistant => "Assistant",
                 };
-                Some(format!("{}: {}", role, text.chars().take(300).collect::<String>()))
+                Some(format!(
+                    "{}: {}",
+                    role,
+                    text.chars().take(300).collect::<String>()
+                ))
             })
             .collect::<Vec<_>>()
             .join("\n");
@@ -5043,7 +5502,9 @@ impl SlashCommand for RenameCommand {
 
         match provider.create_message(request).await {
             Ok(response) => {
-                let raw_text = text_from_content_blocks(&response.content).trim().to_string();
+                let raw_text = text_from_content_blocks(&response.content)
+                    .trim()
+                    .to_string();
 
                 let generated = raw_text
                     .to_lowercase()
@@ -5056,7 +5517,8 @@ impl SlashCommand for RenameCommand {
                 if cleaned.is_empty() {
                     return CommandResult::Error(
                         "Could not generate a valid name from conversation. \
-                         Use /rename <name> to set manually.".to_string(),
+                         Use /rename <name> to set manually."
+                            .to_string(),
                     );
                 }
 
@@ -5074,8 +5536,12 @@ impl SlashCommand for RenameCommand {
 
 #[async_trait]
 impl SlashCommand for EffortCommand {
-    fn name(&self) -> &str { "effort" }
-    fn description(&self) -> &str { "Set the model's thinking effort (low | normal | high)" }
+    fn name(&self) -> &str {
+        "effort"
+    }
+    fn description(&self) -> &str {
+        "Set the model's thinking effort (low | normal | high)"
+    }
     fn help(&self) -> &str {
         "Usage: /effort [low|normal|high]\n\
          Sets how much computation the model uses for reasoning.\n\
@@ -5112,8 +5578,12 @@ impl SlashCommand for EffortCommand {
 
 #[async_trait]
 impl SlashCommand for SummaryCommand {
-    fn name(&self) -> &str { "summary" }
-    fn description(&self) -> &str { "Generate a brief summary of the conversation so far" }
+    fn name(&self) -> &str {
+        "summary"
+    }
+    fn description(&self) -> &str {
+        "Generate a brief summary of the conversation so far"
+    }
 
     async fn execute(&self, _args: &str, ctx: &mut CommandContext) -> CommandResult {
         let count = ctx.messages.len();
@@ -5134,8 +5604,12 @@ impl SlashCommand for SummaryCommand {
 
 #[async_trait]
 impl SlashCommand for CommitCommand {
-    fn name(&self) -> &str { "commit" }
-    fn description(&self) -> &str { "Ask Claurst to commit staged changes" }
+    fn name(&self) -> &str {
+        "commit"
+    }
+    fn description(&self) -> &str {
+        "Ask Claurst to commit staged changes"
+    }
 
     async fn execute(&self, args: &str, _ctx: &mut CommandContext) -> CommandResult {
         let extra = if args.trim().is_empty() {
@@ -5162,7 +5636,7 @@ impl SlashCommand for CommitCommand {
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, Default)]
 struct UiSettings {
     #[serde(default)]
-    pub editor_mode: Option<String>,       // "vim" or "normal"
+    pub editor_mode: Option<String>, // "vim" or "normal"
     #[serde(default)]
     pub fast_mode: Option<bool>,
     #[serde(default)]
@@ -5224,9 +5698,15 @@ where
 
 #[async_trait]
 impl SlashCommand for RemoteControlCommand {
-    fn name(&self) -> &str { "remote-control" }
-    fn aliases(&self) -> Vec<&str> { vec!["rc"] }
-    fn description(&self) -> &str { "Show or manage the remote control (Bridge) connection" }
+    fn name(&self) -> &str {
+        "remote-control"
+    }
+    fn aliases(&self) -> Vec<&str> {
+        vec!["rc"]
+    }
+    fn description(&self) -> &str {
+        "Show or manage the remote control (Bridge) connection"
+    }
     fn help(&self) -> &str {
         "Usage: /remote-control [start|stop|status]\n\n\
          The Bridge feature lets you connect your local Claurst CLI to the\n\
@@ -5263,8 +5743,11 @@ impl SlashCommand for RemoteControlCommand {
                     "not set (required to connect)"
                 };
 
-                let startup_status =
-                    if remote_at_startup { "enabled at startup" } else { "disabled" };
+                let startup_status = if remote_at_startup {
+                    "enabled at startup"
+                } else {
+                    "disabled"
+                };
 
                 // Active session info from context
                 let session_section = if let Some(ref url) = ctx.remote_session_url {
@@ -5372,8 +5855,12 @@ impl SlashCommand for RemoteControlCommand {
 
 #[async_trait]
 impl SlashCommand for RemoteEnvCommand {
-    fn name(&self) -> &str { "remote-env" }
-    fn description(&self) -> &str { "Show and manage environment variables for remote sessions" }
+    fn name(&self) -> &str {
+        "remote-env"
+    }
+    fn description(&self) -> &str {
+        "Show and manage environment variables for remote sessions"
+    }
     fn help(&self) -> &str {
         "Usage: /remote-env [set <KEY> <VALUE> | unset <KEY> | list]\n\n\
          Manages env vars stored in config that are forwarded to remote Claurst sessions.\n\
@@ -5439,9 +5926,7 @@ impl SlashCommand for RemoteEnvCommand {
             }
             "unset" | "remove" | "delete" => {
                 if key.is_empty() {
-                    return CommandResult::Error(
-                        "Usage: /remote-env unset <KEY>".to_string(),
-                    );
+                    return CommandResult::Error("Usage: /remote-env unset <KEY>".to_string());
                 }
                 if !ctx.config.env.contains_key(key) {
                     return CommandResult::Message(format!("Key '{}' is not set.", key));
@@ -5471,8 +5956,12 @@ impl SlashCommand for RemoteEnvCommand {
 
 #[async_trait]
 impl SlashCommand for ContextCommand {
-    fn name(&self) -> &str { "context" }
-    fn description(&self) -> &str { "Show context window usage (tokens used / available)" }
+    fn name(&self) -> &str {
+        "context"
+    }
+    fn description(&self) -> &str {
+        "Show context window usage (tokens used / available)"
+    }
     fn help(&self) -> &str {
         "Usage: /context\n\n\
          Displays the current context window utilization:\n\
@@ -5538,8 +6027,12 @@ impl SlashCommand for ContextCommand {
 
 #[async_trait]
 impl SlashCommand for CopyCommand {
-    fn name(&self) -> &str { "copy" }
-    fn description(&self) -> &str { "Copy the last assistant response to the clipboard" }
+    fn name(&self) -> &str {
+        "copy"
+    }
+    fn description(&self) -> &str {
+        "Copy the last assistant response to the clipboard"
+    }
     fn help(&self) -> &str {
         "Usage: /copy [n]\n\n\
          Copies the most recent assistant response to the system clipboard.\n\
@@ -5624,6 +6117,7 @@ impl SlashCommand for CopyCommand {
 
 mod chrome_cdp {
     use base64::Engine as _;
+    use futures::{SinkExt, StreamExt};
     use once_cell::sync::Lazy;
     use parking_lot::Mutex;
     use serde_json::{json, Value};
@@ -5632,7 +6126,6 @@ mod chrome_cdp {
     use tokio_tungstenite::{
         connect_async, tungstenite::Message as WsMessage, MaybeTlsStream, WebSocketStream,
     };
-    use futures::{SinkExt, StreamExt};
 
     // -----------------------------------------------------------------------
     // Global session state
@@ -5726,9 +6219,9 @@ mod chrome_cdp {
         let ws_url = tabs
             .as_array()
             .and_then(|arr| {
-                arr.iter().find(|t| t["type"] == "page").and_then(|t| {
-                    t["webSocketDebuggerUrl"].as_str().map(|s| s.to_string())
-                })
+                arr.iter()
+                    .find(|t| t["type"] == "page")
+                    .and_then(|t| t["webSocketDebuggerUrl"].as_str().map(|s| s.to_string()))
             })
             .ok_or_else(|| {
                 anyhow::anyhow!(
@@ -5747,11 +6240,15 @@ mod chrome_cdp {
             })
             .unwrap_or_default();
 
-        let (ws, _) = connect_async(&ws_url).await.map_err(|e| {
-            anyhow::anyhow!("WebSocket connect to {} failed: {}", ws_url, e)
-        })?;
+        let (ws, _) = connect_async(&ws_url)
+            .await
+            .map_err(|e| anyhow::anyhow!("WebSocket connect to {} failed: {}", ws_url, e))?;
 
-        let mut session = ChromeSession { ws, port, tab_url: tab_url.clone() };
+        let mut session = ChromeSession {
+            ws,
+            port,
+            tab_url: tab_url.clone(),
+        };
         // Enable Page domain so captureScreenshot etc. work.
         cdp_call(&mut session.ws, "Page.enable", json!({})).await?;
         // Enable Runtime domain for eval/click/fill.
@@ -5945,14 +6442,15 @@ mod chrome_cdp {
         store_session(s);
         result
     }
-
 }
 
 // ---- SlashCommand impl -------------------------------------------------------
 
 #[async_trait]
 impl SlashCommand for ChromeCommand {
-    fn name(&self) -> &str { "chrome" }
+    fn name(&self) -> &str {
+        "chrome"
+    }
     fn description(&self) -> &str {
         "Browser automation via Chrome DevTools Protocol (CDP)"
     }
@@ -5985,10 +6483,7 @@ impl SlashCommand for ChromeCommand {
                     match p.parse() {
                         Ok(n) => n,
                         Err(_) => {
-                            return CommandResult::Error(format!(
-                                "Invalid port number: {}",
-                                p
-                            ));
+                            return CommandResult::Error(format!("Invalid port number: {}", p));
                         }
                     }
                 } else if rest.is_empty() {
@@ -6114,9 +6609,15 @@ impl SlashCommand for ChromeCommand {
 
 #[async_trait]
 impl SlashCommand for VimCommand {
-    fn name(&self) -> &str { "vim" }
-    fn aliases(&self) -> Vec<&str> { vec!["vi"] }
-    fn description(&self) -> &str { "Toggle vim keybinding mode on/off" }
+    fn name(&self) -> &str {
+        "vim"
+    }
+    fn aliases(&self) -> Vec<&str> {
+        vec!["vi"]
+    }
+    fn description(&self) -> &str {
+        "Toggle vim keybinding mode on/off"
+    }
     fn help(&self) -> &str {
         "Usage: /vim [on|off]\n\n\
          Toggles vim keybinding mode in the REPL input.\n\
@@ -6133,7 +6634,11 @@ impl SlashCommand for VimCommand {
             "off" | "normal" => "normal",
             "" => {
                 // Toggle
-                if current_mode == "vim" { "normal" } else { "vim" }
+                if current_mode == "vim" {
+                    "normal"
+                } else {
+                    "vim"
+                }
             }
             other => {
                 return CommandResult::Error(format!(
@@ -6164,8 +6669,12 @@ impl SlashCommand for VimCommand {
 
 #[async_trait]
 impl SlashCommand for VoiceCommand {
-    fn name(&self) -> &str { "voice" }
-    fn description(&self) -> &str { "Toggle voice input mode on/off" }
+    fn name(&self) -> &str {
+        "voice"
+    }
+    fn description(&self) -> &str {
+        "Toggle voice input mode on/off"
+    }
     fn help(&self) -> &str {
         "Usage: /voice [on|off|status]\n\n\
          Enables or disables voice input (push-to-talk).\n\
@@ -6192,9 +6701,14 @@ impl SlashCommand for VoiceCommand {
             "off" | "disable" | "disabled" | "false" | "0" => false,
             "" => !currently_enabled, // toggle
             "status" => {
-                let state = if currently_enabled { "enabled" } else { "disabled" };
-                let endpoint = std::env::var("WHISPER_ENDPOINT_URL")
-                    .unwrap_or_else(|_| "https://api.openai.com/v1/audio/transcriptions (default)".to_string());
+                let state = if currently_enabled {
+                    "enabled"
+                } else {
+                    "disabled"
+                };
+                let endpoint = std::env::var("WHISPER_ENDPOINT_URL").unwrap_or_else(|_| {
+                    "https://api.openai.com/v1/audio/transcriptions (default)".to_string()
+                });
                 let key_source = if std::env::var("OPENAI_API_KEY").is_ok() {
                     "OPENAI_API_KEY"
                 } else if std::env::var("ANTHROPIC_API_KEY").is_ok() {
@@ -6238,9 +6752,7 @@ impl SlashCommand for VoiceCommand {
                         endpoint, key_hint
                     ))
                 } else {
-                    CommandResult::Message(
-                        "Voice recording deactivated.".to_string(),
-                    )
+                    CommandResult::Message("Voice recording deactivated.".to_string())
                 }
             }
             Err(e) => CommandResult::Error(format!("Failed to save voice setting: {}", e)),
@@ -6252,9 +6764,15 @@ impl SlashCommand for VoiceCommand {
 
 #[async_trait]
 impl SlashCommand for UpgradeCommand {
-    fn name(&self) -> &str { "update" }
-    fn aliases(&self) -> Vec<&str> { vec!["upgrade"] }
-    fn description(&self) -> &str { "Check for updates and download the latest release" }
+    fn name(&self) -> &str {
+        "update"
+    }
+    fn aliases(&self) -> Vec<&str> {
+        vec!["upgrade"]
+    }
+    fn description(&self) -> &str {
+        "Check for updates and download the latest release"
+    }
     fn help(&self) -> &str {
         "Usage: /update\n\n\
          Checks GitHub releases for the latest version of Claurst.\n\
@@ -6288,8 +6806,7 @@ impl SlashCommand for UpgradeCommand {
 
         match resp {
             Ok(r) if r.status().is_success() => {
-                let json: serde_json::Value =
-                    r.json().await.unwrap_or(serde_json::Value::Null);
+                let json: serde_json::Value = r.json().await.unwrap_or(serde_json::Value::Null);
 
                 let tag = json
                     .get("tag_name")
@@ -6341,8 +6858,12 @@ impl SlashCommand for UpgradeCommand {
 
 #[async_trait]
 impl SlashCommand for ReleaseNotesCommand {
-    fn name(&self) -> &str { "release-notes" }
-    fn description(&self) -> &str { "Show release notes for the current version" }
+    fn name(&self) -> &str {
+        "release-notes"
+    }
+    fn description(&self) -> &str {
+        "Show release notes for the current version"
+    }
     fn help(&self) -> &str {
         "Usage: /release-notes [version]\n\n\
          Fetches and displays release notes from GitHub.\n\
@@ -6383,8 +6904,7 @@ impl SlashCommand for ReleaseNotesCommand {
 
         match client.get(&url).send().await {
             Ok(r) if r.status().is_success() => {
-                let json: serde_json::Value =
-                    r.json().await.unwrap_or(serde_json::Value::Null);
+                let json: serde_json::Value = r.json().await.unwrap_or(serde_json::Value::Null);
 
                 let body = json
                     .get("body")
@@ -6396,10 +6916,7 @@ impl SlashCommand for ReleaseNotesCommand {
                     .and_then(|v| v.as_str())
                     .unwrap_or("unknown date");
 
-                let html_url = json
-                    .get("html_url")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("");
+                let html_url = json.get("html_url").and_then(|v| v.as_str()).unwrap_or("");
 
                 CommandResult::Message(format!(
                     "Release Notes: Claurst {tag}\n\
@@ -6431,8 +6948,12 @@ impl SlashCommand for ReleaseNotesCommand {
 
 #[async_trait]
 impl SlashCommand for RateLimitOptionsCommand {
-    fn name(&self) -> &str { "rate-limit-options" }
-    fn description(&self) -> &str { "Show rate limit tiers and current rate limit status" }
+    fn name(&self) -> &str {
+        "rate-limit-options"
+    }
+    fn description(&self) -> &str {
+        "Show rate limit tiers and current rate limit status"
+    }
     fn help(&self) -> &str {
         "Usage: /rate-limit-options\n\n\
          Displays available rate limit tiers and the current tier for your account.\n\
@@ -6448,7 +6969,11 @@ impl SlashCommand for RateLimitOptionsCommand {
                     "Account type:    {}\n\
                      Scopes:          {}",
                     sub_type,
-                    if tokens.scopes.is_empty() { "none".to_string() } else { tokens.scopes.join(", ") }
+                    if tokens.scopes.is_empty() {
+                        "none".to_string()
+                    } else {
+                        tokens.scopes.join(", ")
+                    }
                 )
             }
             None => {
@@ -6486,8 +7011,12 @@ impl SlashCommand for RateLimitOptionsCommand {
 
 #[async_trait]
 impl SlashCommand for StatuslineCommand {
-    fn name(&self) -> &str { "statusline" }
-    fn description(&self) -> &str { "Configure what is shown in the status line" }
+    fn name(&self) -> &str {
+        "statusline"
+    }
+    fn description(&self) -> &str {
+        "Configure what is shown in the status line"
+    }
     fn help(&self) -> &str {
         "Usage: /statusline [show|hide] [cost|tokens|model|time|all]\n\n\
          Controls which items appear in the TUI status bar at the bottom.\n\
@@ -6541,10 +7070,12 @@ impl SlashCommand for StatuslineCommand {
                 s.statusline_show_model = Some(show);
                 s.statusline_show_time = Some(show);
             }) {
-                Ok(_) => return CommandResult::Message(format!(
-                    "Status line: all items {}.",
-                    if show { "shown" } else { "hidden" }
-                )),
+                Ok(_) => {
+                    return CommandResult::Message(format!(
+                        "Status line: all items {}.",
+                        if show { "shown" } else { "hidden" }
+                    ))
+                }
                 Err(e) => return CommandResult::Error(format!("Failed to save: {}", e)),
             }
         }
@@ -6574,15 +7105,23 @@ impl SlashCommand for StatuslineCommand {
 }
 
 fn fmt_bool(v: bool) -> &'static str {
-    if v { "on" } else { "off" }
+    if v {
+        "on"
+    } else {
+        "off"
+    }
 }
 
 // ---- /security-review ----------------------------------------------------
 
 #[async_trait]
 impl SlashCommand for SecurityReviewCommand {
-    fn name(&self) -> &str { "security-review" }
-    fn description(&self) -> &str { "Run a security review of the current project" }
+    fn name(&self) -> &str {
+        "security-review"
+    }
+    fn description(&self) -> &str {
+        "Run a security review of the current project"
+    }
     fn help(&self) -> &str {
         "Usage: /security-review [path]\n\n\
          Asks Claurst to perform a security review of the codebase.\n\
@@ -6626,8 +7165,12 @@ impl SlashCommand for SecurityReviewCommand {
 
 #[async_trait]
 impl SlashCommand for TerminalSetupCommand {
-    fn name(&self) -> &str { "terminal-setup" }
-    fn description(&self) -> &str { "Help configure your terminal for optimal Claurst use" }
+    fn name(&self) -> &str {
+        "terminal-setup"
+    }
+    fn description(&self) -> &str {
+        "Help configure your terminal for optimal Claurst use"
+    }
     fn help(&self) -> &str {
         "Usage: /terminal-setup\n\n\
          Diagnoses your terminal environment and gives recommendations for\n\
@@ -6665,10 +7208,15 @@ impl SlashCommand for TerminalSetupCommand {
         // Check if UNICODE is likely supported
         let lang = std::env::var("LANG").unwrap_or_default();
         let lc_all = std::env::var("LC_ALL").unwrap_or_default();
-        let unicode_env = lang.to_lowercase().contains("utf") || lc_all.to_lowercase().contains("utf");
+        let unicode_env =
+            lang.to_lowercase().contains("utf") || lc_all.to_lowercase().contains("utf");
         checks.push(format!(
             "Unicode/UTF-8: {}",
-            if unicode_env { "likely supported (LANG/LC_ALL contains UTF)" } else { "check LANG env var" }
+            if unicode_env {
+                "likely supported (LANG/LC_ALL contains UTF)"
+            } else {
+                "check LANG env var"
+            }
         ));
 
         // Check for known good terminals
@@ -6676,11 +7224,15 @@ impl SlashCommand for TerminalSetupCommand {
             term_program.to_lowercase().as_str(),
             "iterm.app" | "iterm2" | "hyper" | "warp" | "alacritty" | "kitty" | "wezterm"
         ) || term_program.to_lowercase().contains("vscode")
-          || term_program.to_lowercase().contains("terminal");
+            || term_program.to_lowercase().contains("terminal");
 
         checks.push(format!(
             "Terminal type: {}",
-            if is_good_terminal { "well-known terminal (good)" } else { "verify settings below" }
+            if is_good_terminal {
+                "well-known terminal (good)"
+            } else {
+                "verify settings below"
+            }
         ));
 
         // Shell detection
@@ -6688,8 +7240,8 @@ impl SlashCommand for TerminalSetupCommand {
         checks.push(format!("Shell:         {}", shell));
 
         // Check for Nerd Fonts (heuristic: environment variable set by some terminals)
-        let nerd_font = std::env::var("NERD_FONT").is_ok()
-            || std::env::var("TERM_NERD_FONT").is_ok();
+        let nerd_font =
+            std::env::var("NERD_FONT").is_ok() || std::env::var("TERM_NERD_FONT").is_ok();
 
         CommandResult::Message(format!(
             "Terminal Setup Diagnostic\n\
@@ -6725,8 +7277,12 @@ impl SlashCommand for TerminalSetupCommand {
 
 #[async_trait]
 impl SlashCommand for ExtraUsageCommand {
-    fn name(&self) -> &str { "extra-usage" }
-    fn description(&self) -> &str { "Show detailed usage statistics: calls, cache, tools" }
+    fn name(&self) -> &str {
+        "extra-usage"
+    }
+    fn description(&self) -> &str {
+        "Show detailed usage statistics: calls, cache, tools"
+    }
     fn help(&self) -> &str {
         "Usage: /extra-usage\n\n\
          Displays extended usage statistics beyond /cost:\n\
@@ -6745,7 +7301,9 @@ impl SlashCommand for ExtraUsageCommand {
         let cost = ctx.cost_tracker.total_cost_usd();
 
         // Estimate API calls from messages (each assistant message ~ 1 API call)
-        let api_calls = ctx.messages.iter()
+        let api_calls = ctx
+            .messages
+            .iter()
             .filter(|m| m.role == claurst_core::types::Role::Assistant)
             .count();
         let api_calls = api_calls.max(1); // at least 1 if we have any data
@@ -6799,7 +7357,11 @@ impl SlashCommand for ExtraUsageCommand {
                 "No cache activity"
             },
             cost = cost,
-            cost_per_k = if total > 0 { cost / (total as f64 / 1000.0) } else { 0.0 },
+            cost_per_k = if total > 0 {
+                cost / (total as f64 / 1000.0)
+            } else {
+                0.0
+            },
         ))
     }
 }
@@ -6808,8 +7370,12 @@ impl SlashCommand for ExtraUsageCommand {
 
 #[async_trait]
 impl SlashCommand for AdvisorCommand {
-    fn name(&self) -> &str { "advisor" }
-    fn description(&self) -> &str { "Set or unset the server-side advisor model" }
+    fn name(&self) -> &str {
+        "advisor"
+    }
+    fn description(&self) -> &str {
+        "Set or unset the server-side advisor model"
+    }
     fn help(&self) -> &str {
         "Usage: /advisor [<model>|off|unset]\n\n\
          Sets the advisor model used for server-side suggestions.\n\
@@ -6872,8 +7438,12 @@ impl SlashCommand for AdvisorCommand {
 
 #[async_trait]
 impl SlashCommand for InstallSlackAppCommand {
-    fn name(&self) -> &str { "install-slack-app" }
-    fn description(&self) -> &str { "Install the Claurst Slack integration" }
+    fn name(&self) -> &str {
+        "install-slack-app"
+    }
+    fn description(&self) -> &str {
+        "Install the Claurst Slack integration"
+    }
     fn help(&self) -> &str {
         "Usage: /install-slack-app\n\n\
          Opens instructions for installing the Claurst Slack app.\n\
@@ -6903,9 +7473,15 @@ impl SlashCommand for InstallSlackAppCommand {
 
 #[async_trait]
 impl SlashCommand for FastCommand {
-    fn name(&self) -> &str { "fast" }
-    fn aliases(&self) -> Vec<&str> { vec!["speed"] }
-    fn description(&self) -> &str { "Toggle fast mode (uses a faster/cheaper model)" }
+    fn name(&self) -> &str {
+        "fast"
+    }
+    fn aliases(&self) -> Vec<&str> {
+        vec!["speed"]
+    }
+    fn description(&self) -> &str {
+        "Toggle fast mode (uses a faster/cheaper model)"
+    }
     fn help(&self) -> &str {
         "Usage: /fast [on|off]\n\n\
          Fast mode switches to the active provider's smaller, faster model\n\
@@ -6935,11 +7511,8 @@ impl SlashCommand for FastCommand {
 
         let provider_id = ctx.config.selected_provider_id();
         let fast_model = resolve_fast_model_id(&ctx.config);
-        let normal_model = stripped_model_for_provider(
-            provider_id,
-            ctx.config.effective_model(),
-        )
-        .to_string();
+        let normal_model =
+            stripped_model_for_provider(provider_id, ctx.config.effective_model()).to_string();
 
         if enable {
             let mut new_config = ctx.config.clone();
@@ -6956,11 +7529,8 @@ impl SlashCommand for FastCommand {
             let mut new_config = ctx.config.clone();
             // Restore default / saved model
             new_config.model = None;
-            let restored_model = stripped_model_for_provider(
-                provider_id,
-                new_config.effective_model(),
-            )
-            .to_string();
+            let restored_model =
+                stripped_model_for_provider(provider_id, new_config.effective_model()).to_string();
             CommandResult::ConfigChangeMessage(
                 new_config,
                 format!(
@@ -6976,9 +7546,15 @@ impl SlashCommand for FastCommand {
 
 #[async_trait]
 impl SlashCommand for ThinkBackCommand {
-    fn name(&self) -> &str { "think-back" }
-    fn aliases(&self) -> Vec<&str> { vec!["thinkback"] }
-    fn description(&self) -> &str { "Show thinking traces from previous responses in this session" }
+    fn name(&self) -> &str {
+        "think-back"
+    }
+    fn aliases(&self) -> Vec<&str> {
+        vec!["thinkback"]
+    }
+    fn description(&self) -> &str {
+        "Show thinking traces from previous responses in this session"
+    }
     fn help(&self) -> &str {
         "Usage: /think-back [n]\n\n\
          Displays the thinking/reasoning traces from the most recent model responses.\n\
@@ -7010,7 +7586,11 @@ impl SlashCommand for ThinkBackCommand {
                     })
                     .collect::<Vec<_>>()
                     .join("\n\n");
-                if thinking.is_empty() { None } else { Some((idx, thinking)) }
+                if thinking.is_empty() {
+                    None
+                } else {
+                    Some((idx, thinking))
+                }
             })
             .collect();
 
@@ -7046,8 +7626,12 @@ impl SlashCommand for ThinkBackCommand {
 
 #[async_trait]
 impl SlashCommand for ThinkBackPlayCommand {
-    fn name(&self) -> &str { "thinkback-play" }
-    fn description(&self) -> &str { "Replay a thinking trace as an animated walkthrough" }
+    fn name(&self) -> &str {
+        "thinkback-play"
+    }
+    fn description(&self) -> &str {
+        "Replay a thinking trace as an animated walkthrough"
+    }
     fn help(&self) -> &str {
         "Usage: /thinkback-play [n]\n\n\
          Replays a previous thinking trace, formatted for easy reading.\n\
@@ -7077,7 +7661,11 @@ impl SlashCommand for ThinkBackPlayCommand {
                     })
                     .collect::<Vec<_>>()
                     .join("\n\n");
-                if t.is_empty() { None } else { Some(t) }
+                if t.is_empty() {
+                    None
+                } else {
+                    Some(t)
+                }
             })
             .collect();
 
@@ -7116,10 +7704,18 @@ impl SlashCommand for ThinkBackPlayCommand {
 
 #[async_trait]
 impl SlashCommand for FeedbackCommand {
-    fn name(&self) -> &str { "report" }
-    fn aliases(&self) -> Vec<&str> { vec![] }
-    fn description(&self) -> &str { "Open the GitHub issues page to report a bug or request a feature" }
-    fn hidden(&self) -> bool { true } // surfaced via BugCommand alias; hidden to avoid duplicate
+    fn name(&self) -> &str {
+        "report"
+    }
+    fn aliases(&self) -> Vec<&str> {
+        vec![]
+    }
+    fn description(&self) -> &str {
+        "Open the GitHub issues page to report a bug or request a feature"
+    }
+    fn hidden(&self) -> bool {
+        true
+    } // surfaced via BugCommand alias; hidden to avoid duplicate
     fn help(&self) -> &str {
         "Usage: /report [description]\n\n\
          Opens the GitHub issues tracker. If a description is provided,\n\
@@ -7133,19 +7729,12 @@ impl SlashCommand for FeedbackCommand {
             url.to_string()
         } else {
             // Append as a body query param
-            format!(
-                "{}?body={}",
-                url,
-                urlencoding::encode(report)
-            )
+            format!("{}?body={}", url, urlencoding::encode(report))
         };
 
         match open_with_system(&display_url) {
             Ok(_) => CommandResult::Message(format!("Opened issue tracker: {}", url)),
-            Err(_) => CommandResult::Message(format!(
-                "Please visit {} to submit a report.",
-                url
-            )),
+            Err(_) => CommandResult::Message(format!("Please visit {} to submit a report.", url)),
         }
     }
 }
@@ -7154,9 +7743,15 @@ impl SlashCommand for FeedbackCommand {
 
 #[async_trait]
 impl SlashCommand for ColorSetCommand {
-    fn name(&self) -> &str { "color-set" }
-    fn hidden(&self) -> bool { true }
-    fn description(&self) -> &str { "Internal: set prompt color — use /color instead" }
+    fn name(&self) -> &str {
+        "color-set"
+    }
+    fn hidden(&self) -> bool {
+        true
+    }
+    fn description(&self) -> &str {
+        "Internal: set prompt color — use /color instead"
+    }
 
     async fn execute(&self, args: &str, _ctx: &mut CommandContext) -> CommandResult {
         let color = args.trim();
@@ -7175,10 +7770,11 @@ impl SlashCommand for ColorSetCommand {
         } else {
             // Validate hex or named color
             let known_colors = [
-                "red", "green", "blue", "yellow", "cyan", "magenta",
-                "white", "orange", "purple", "pink", "gray", "grey",
+                "red", "green", "blue", "yellow", "cyan", "magenta", "white", "orange", "purple",
+                "pink", "gray", "grey",
             ];
-            let is_hex = color.starts_with('#') && (color.len() == 4 || color.len() == 7)
+            let is_hex = color.starts_with('#')
+                && (color.len() == 4 || color.len() == 7)
                 && color[1..].chars().all(|c| c.is_ascii_hexdigit());
             if !is_hex && !known_colors.contains(&color.to_lowercase().as_str()) {
                 return CommandResult::Error(format!(
@@ -7204,8 +7800,12 @@ impl SlashCommand for ColorSetCommand {
 
 #[async_trait]
 impl SlashCommand for SearchCommand {
-    fn name(&self) -> &str { "search" }
-    fn description(&self) -> &str { "Search across all sessions" }
+    fn name(&self) -> &str {
+        "search"
+    }
+    fn description(&self) -> &str {
+        "Search across all sessions"
+    }
     fn help(&self) -> &str {
         "Usage: /search <query>\n\n\
          Searches session titles and message content in the local SQLite\n\
@@ -7239,19 +7839,11 @@ impl SlashCommand for SearchCommand {
 
         let results = match store.search_sessions(query) {
             Ok(r) => r,
-            Err(e) => {
-                return CommandResult::Error(format!(
-                    "Search failed: {}",
-                    e
-                ))
-            }
+            Err(e) => return CommandResult::Error(format!("Search failed: {}", e)),
         };
 
         if results.is_empty() {
-            return CommandResult::Message(format!(
-                "No sessions found matching \"{}\".",
-                query
-            ));
+            return CommandResult::Message(format!("No sessions found matching \"{}\".", query));
         }
 
         let mut out = format!(
@@ -7332,8 +7924,12 @@ mod teleport_bundle {
 
 #[async_trait]
 impl SlashCommand for TeleportCommand {
-    fn name(&self) -> &str { "teleport" }
-    fn description(&self) -> &str { "Export/import/link session context as a portable bundle" }
+    fn name(&self) -> &str {
+        "teleport"
+    }
+    fn description(&self) -> &str {
+        "Export/import/link session context as a portable bundle"
+    }
     fn help(&self) -> &str {
         "Usage:\n\
          \n\
@@ -7406,7 +8002,9 @@ impl SlashCommand for TeleportCommand {
                                         for key in &candidates {
                                             if let Some(v) = input.get(key) {
                                                 if let Some(s) = v.as_str() {
-                                                    if !s.is_empty() && !seen.contains(&s.to_string()) {
+                                                    if !s.is_empty()
+                                                        && !seen.contains(&s.to_string())
+                                                    {
                                                         seen.push(s.to_string());
                                                     }
                                                 }
@@ -7441,10 +8039,12 @@ impl SlashCommand for TeleportCommand {
                     .map(str::to_string)
                     .collect();
                 redacted_env_vars.extend(
-                    claurst_core::config::api_key_env_vars_for_provider(ctx.config.selected_provider_id())
-                        .iter()
-                        .copied()
-                        .map(str::to_string),
+                    claurst_core::config::api_key_env_vars_for_provider(
+                        ctx.config.selected_provider_id(),
+                    )
+                    .iter()
+                    .copied()
+                    .map(str::to_string),
                 );
                 let env: std::collections::HashMap<String, String> = std::env::vars()
                     .filter(|(k, _)| !redacted_env_vars.contains(k))
@@ -7474,7 +8074,11 @@ impl SlashCommand for TeleportCommand {
                             action: PermissionAction::Deny,
                         });
                     }
-                    TeleportPermissions { allowed, denied, rules }
+                    TeleportPermissions {
+                        allowed,
+                        denied,
+                        rules,
+                    }
                 };
 
                 // ---- build bundle -----------------------------------------
@@ -7494,7 +8098,9 @@ impl SlashCommand for TeleportCommand {
                 // ---- serialize and write ----------------------------------
                 let json = match serde_json::to_string_pretty(&bundle) {
                     Ok(j) => j,
-                    Err(e) => return CommandResult::Error(format!("Failed to serialize bundle: {}", e)),
+                    Err(e) => {
+                        return CommandResult::Error(format!("Failed to serialize bundle: {}", e))
+                    }
                 };
 
                 if let Err(e) = std::fs::write(&output_path, &json) {
@@ -7524,28 +8130,30 @@ impl SlashCommand for TeleportCommand {
 
             "import" => {
                 if rest.is_empty() {
-                    return CommandResult::Error(
-                        "Usage: /teleport import <file>".to_string(),
-                    );
+                    return CommandResult::Error("Usage: /teleport import <file>".to_string());
                 }
 
                 let path = std::path::PathBuf::from(rest);
 
                 let data = match std::fs::read_to_string(&path) {
                     Ok(s) => s,
-                    Err(e) => return CommandResult::Error(format!(
-                        "Cannot read teleport bundle '{}': {}",
-                        path.display(),
-                        e
-                    )),
+                    Err(e) => {
+                        return CommandResult::Error(format!(
+                            "Cannot read teleport bundle '{}': {}",
+                            path.display(),
+                            e
+                        ))
+                    }
                 };
 
                 let bundle: TeleportBundle = match serde_json::from_str(&data) {
                     Ok(b) => b,
-                    Err(e) => return CommandResult::Error(format!(
-                        "Failed to parse teleport bundle: {}",
-                        e
-                    )),
+                    Err(e) => {
+                        return CommandResult::Error(format!(
+                            "Failed to parse teleport bundle: {}",
+                            e
+                        ))
+                    }
                 };
 
                 // ---- validate version ------------------------------------
@@ -7599,7 +8207,11 @@ impl SlashCommand for TeleportCommand {
                     exported_at,
                     msg_count,
                     working_dir_display,
-                    if dir_restored { " (restored)" } else { " (path not found, skipped)" },
+                    if dir_restored {
+                        " (restored)"
+                    } else {
+                        " (path not found, skipped)"
+                    },
                     allowed_count,
                     denied_count,
                     files_count,
@@ -7608,8 +8220,8 @@ impl SlashCommand for TeleportCommand {
 
             "link" => {
                 // ---- build a minimal bundle for the link (no env vars) ---
-                use teleport_bundle::TeleportBundle;
                 use base64::Engine as _;
+                use teleport_bundle::TeleportBundle;
 
                 let permissions = {
                     let allowed = ctx.config.allowed_tools.clone();
@@ -7630,7 +8242,11 @@ impl SlashCommand for TeleportCommand {
                             action: PermissionAction::Deny,
                         });
                     }
-                    TeleportPermissions { allowed, denied, rules }
+                    TeleportPermissions {
+                        allowed,
+                        denied,
+                        rules,
+                    }
                 };
 
                 let bundle = TeleportBundle {
@@ -7641,22 +8257,28 @@ impl SlashCommand for TeleportCommand {
                     permissions,
                     model: ctx.config.model.clone(),
                     effort: None,
-                    files: Vec::new(), // keep link compact
+                    files: Vec::new(),                     // keep link compact
                     env: std::collections::HashMap::new(), // omit env for security
                     exported_at: chrono::Utc::now().to_rfc3339(),
                 };
 
                 let json = match serde_json::to_string(&bundle) {
                     Ok(j) => j,
-                    Err(e) => return CommandResult::Error(format!("Failed to serialize bundle: {}", e)),
+                    Err(e) => {
+                        return CommandResult::Error(format!("Failed to serialize bundle: {}", e))
+                    }
                 };
 
-                let encoded = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(json.as_bytes());
+                let encoded =
+                    base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(json.as_bytes());
                 let link = format!("teleport://{}", encoded);
 
                 // Warn if the link is very long.
                 let size_hint = if link.len() > 8192 {
-                    format!("\n(Link is {} bytes — consider /teleport export for large sessions)", link.len())
+                    format!(
+                        "\n(Link is {} bytes — consider /teleport export for large sessions)",
+                        link.len()
+                    )
                 } else {
                     String::new()
                 };
@@ -7664,9 +8286,7 @@ impl SlashCommand for TeleportCommand {
                 CommandResult::Message(format!(
                     "Teleport link generated for session {}:\n\n{}{}\n\n\
                      Share this link or use: /teleport import <link-url>",
-                    ctx.session_id,
-                    link,
-                    size_hint,
+                    ctx.session_id, link, size_hint,
                 ))
             }
 
@@ -7677,7 +8297,8 @@ impl SlashCommand for TeleportCommand {
                      \x20 /teleport export [--output <file>]   export session to .teleport bundle\n\
                      \x20 /teleport import <file>              restore a .teleport bundle\n\
                      \x20 /teleport link                       generate a teleport:// deep link\n\
-                     \nSee /help teleport for details.".to_string()
+                     \nSee /help teleport for details."
+                        .to_string(),
                 )
             }
 
@@ -7693,8 +8314,12 @@ impl SlashCommand for TeleportCommand {
 
 #[async_trait]
 impl SlashCommand for BtwCommand {
-    fn name(&self) -> &str { "btw" }
-    fn description(&self) -> &str { "Ask a side question without adding it to conversation history" }
+    fn name(&self) -> &str {
+        "btw"
+    }
+    fn description(&self) -> &str {
+        "Ask a side question without adding it to conversation history"
+    }
     fn help(&self) -> &str {
         "Usage: /btw <question>\n\n\
          Submits a background question to the model without it becoming part of\n\
@@ -7726,9 +8351,15 @@ impl SlashCommand for BtwCommand {
 
 #[async_trait]
 impl SlashCommand for CtxVizCommand {
-    fn name(&self) -> &str { "ctx-viz" }
-    fn aliases(&self) -> Vec<&str> { vec!["context-visualizer", "ctx"] }
-    fn description(&self) -> &str { "Visualize context window usage breakdown by category" }
+    fn name(&self) -> &str {
+        "ctx-viz"
+    }
+    fn aliases(&self) -> Vec<&str> {
+        vec!["context-visualizer", "ctx"]
+    }
+    fn description(&self) -> &str {
+        "Visualize context window usage breakdown by category"
+    }
     fn help(&self) -> &str {
         "Usage: /ctx-viz\n\n\
          Shows a detailed breakdown of how the context window is being used:\n\
@@ -7744,16 +8375,17 @@ impl SlashCommand for CtxVizCommand {
 
         // Estimate system prompt tokens: rough chars/4 approximation
         // Build a minimal system prompt to estimate its size.
-        let sys_prompt_chars: usize = ctx.config.custom_system_prompt
+        let sys_prompt_chars: usize = ctx
+            .config
+            .custom_system_prompt
             .as_deref()
             .map(|s| s.len())
             .unwrap_or(2400 * 4); // fallback: ~2400 tokens worth
         let sys_prompt_tokens = (sys_prompt_chars / 4).max(1) as u64;
 
         // Estimate conversation tokens from messages
-        let (conv_chars, tool_chars): (usize, usize) = ctx.messages.iter().fold(
-            (0, 0),
-            |(conv, tool), msg| {
+        let (conv_chars, tool_chars): (usize, usize) =
+            ctx.messages.iter().fold((0, 0), |(conv, tool), msg| {
                 let text = msg.get_all_text();
                 // Heuristic: if the message looks like a tool result, count separately
                 if msg.role == claurst_core::types::Role::User && text.starts_with('[') {
@@ -7761,8 +8393,7 @@ impl SlashCommand for CtxVizCommand {
                 } else {
                     (conv + text.len(), tool)
                 }
-            },
-        );
+            });
 
         let conv_tokens = (conv_chars / 4) as u64;
         let tool_tokens = (tool_chars / 4) as u64;
@@ -7800,9 +8431,15 @@ impl SlashCommand for CtxVizCommand {
 
 #[async_trait]
 impl SlashCommand for SandboxToggleCommand {
-    fn name(&self) -> &str { "sandbox-toggle" }
-    fn aliases(&self) -> Vec<&str> { vec!["sandbox"] }
-    fn description(&self) -> &str { "Enable or disable sandboxed execution of shell commands" }
+    fn name(&self) -> &str {
+        "sandbox-toggle"
+    }
+    fn aliases(&self) -> Vec<&str> {
+        vec!["sandbox"]
+    }
+    fn description(&self) -> &str {
+        "Enable or disable sandboxed execution of shell commands"
+    }
     fn help(&self) -> &str {
         "Usage: /sandbox-toggle [on|off|exclude <pattern>|status]\n\n\
          Toggles sandboxed execution of bash/shell commands.\n\
@@ -7823,14 +8460,18 @@ impl SlashCommand for SandboxToggleCommand {
 
         // Platform support check: sandbox requires macOS or Linux (not Windows native).
         let platform = std::env::consts::OS;
-        let is_wsl = std::env::var("WSL_DISTRO_NAME").is_ok()
-            || std::env::var("WSL_INTEROP").is_ok();
+        let is_wsl =
+            std::env::var("WSL_DISTRO_NAME").is_ok() || std::env::var("WSL_INTEROP").is_ok();
         let is_supported = matches!(platform, "linux" | "macos") || is_wsl;
 
         // Handle subcommand: status
         if args == "status" {
             let ui = load_ui_settings();
-            let mode = if ui.sandbox_mode.unwrap_or(false) { "enabled" } else { "disabled" };
+            let mode = if ui.sandbox_mode.unwrap_or(false) {
+                "enabled"
+            } else {
+                "disabled"
+            };
             let excl = if ui.sandbox_excluded_commands.is_empty() {
                 "(none)".to_string()
             } else {
@@ -7843,7 +8484,10 @@ impl SlashCommand for SandboxToggleCommand {
             let platform_note = if is_supported {
                 format!("\u{2713} Supported on this platform ({})", platform)
             } else {
-                format!("\u{2717} Not supported on this platform ({}). Requires macOS, Linux, or WSL2.", platform)
+                format!(
+                    "\u{2717} Not supported on this platform ({}). Requires macOS, Linux, or WSL2.",
+                    platform
+                )
             };
             return CommandResult::Message(format!(
                 "Sandbox mode: {}\n\
@@ -7860,7 +8504,8 @@ impl SlashCommand for SandboxToggleCommand {
             if rest.is_empty() {
                 return CommandResult::Error(
                     "Usage: /sandbox-toggle exclude <command-pattern>\n\
-                     Example: /sandbox-toggle exclude \"npm run test:*\"".to_string()
+                     Example: /sandbox-toggle exclude \"npm run test:*\""
+                        .to_string(),
                 );
             }
             // Strip surrounding quotes if present
@@ -7887,8 +8532,13 @@ impl SlashCommand for SandboxToggleCommand {
         }
 
         // Platform guard for toggling on/off
-        if !is_supported && (args == "on" || args == "enable" || args == "enabled"
-            || args == "true" || args == "1" || args.is_empty())
+        if !is_supported
+            && (args == "on"
+                || args == "enable"
+                || args == "enabled"
+                || args == "true"
+                || args == "1"
+                || args.is_empty())
         {
             let msg = if is_wsl {
                 "Error: Sandboxing requires WSL2. WSL1 is not supported.".to_string()
@@ -7900,8 +8550,11 @@ impl SlashCommand for SandboxToggleCommand {
                 )
             };
             // Only hard-block enabling; allow off/status even on unsupported platforms.
-            if args != "off" && args != "disable" && args != "disabled"
-                && args != "false" && args != "0"
+            if args != "off"
+                && args != "disable"
+                && args != "disabled"
+                && args != "false"
+                && args != "0"
             {
                 return CommandResult::Error(msg);
             }
@@ -7941,8 +8594,12 @@ impl SlashCommand for SandboxToggleCommand {
 
 #[async_trait]
 impl SlashCommand for HeapdumpCommand {
-    fn name(&self) -> &str { "heapdump" }
-    fn description(&self) -> &str { "Show process memory and diagnostic information" }
+    fn name(&self) -> &str {
+        "heapdump"
+    }
+    fn description(&self) -> &str {
+        "Show process memory and diagnostic information"
+    }
     fn help(&self) -> &str {
         "Usage: /heapdump\n\n\
          Displays a diagnostic snapshot of the current process:\n\
@@ -7999,8 +8656,12 @@ impl SlashCommand for HeapdumpCommand {
 
 #[async_trait]
 impl SlashCommand for InsightsCommand {
-    fn name(&self) -> &str { "insights" }
-    fn description(&self) -> &str { "Generate a session analysis report with conversation statistics" }
+    fn name(&self) -> &str {
+        "insights"
+    }
+    fn description(&self) -> &str {
+        "Generate a session analysis report with conversation statistics"
+    }
     fn help(&self) -> &str {
         "Usage: /insights\n\n\
          Analyses the current conversation and prints a statistics report:\n\
@@ -8011,10 +8672,12 @@ impl SlashCommand for InsightsCommand {
         let messages = &ctx.messages;
 
         // Count turns (user / assistant pairs)
-        let user_turns: usize = messages.iter()
+        let user_turns: usize = messages
+            .iter()
             .filter(|m| matches!(m.role, claurst_core::types::Role::User))
             .count();
-        let assistant_turns: usize = messages.iter()
+        let assistant_turns: usize = messages
+            .iter()
             .filter(|m| matches!(m.role, claurst_core::types::Role::Assistant))
             .count();
         let total_turns = user_turns.min(assistant_turns);
@@ -8086,8 +8749,12 @@ impl SlashCommand for InsightsCommand {
 
 #[async_trait]
 impl SlashCommand for UltrareviewCommand {
-    fn name(&self) -> &str { "ultrareview" }
-    fn description(&self) -> &str { "Run an exhaustive multi-dimensional code review" }
+    fn name(&self) -> &str {
+        "ultrareview"
+    }
+    fn description(&self) -> &str {
+        "Run an exhaustive multi-dimensional code review"
+    }
     fn help(&self) -> &str {
         "Usage: /ultrareview [path]\n\n\
          Runs a comprehensive code review that goes beyond /review and\n\
@@ -8190,13 +8857,21 @@ impl SlashCommand for UltrareviewCommand {
 
 #[async_trait]
 impl SlashCommand for NamedCommandAdapter {
-    fn name(&self) -> &str { self.slash_name }
+    fn name(&self) -> &str {
+        self.slash_name
+    }
 
-    fn aliases(&self) -> Vec<&str> { self.slash_aliases.to_vec() }
+    fn aliases(&self) -> Vec<&str> {
+        self.slash_aliases.to_vec()
+    }
 
-    fn description(&self) -> &str { self.slash_description }
+    fn description(&self) -> &str {
+        self.slash_description
+    }
 
-    fn help(&self) -> &str { self.slash_help }
+    fn help(&self) -> &str {
+        self.slash_help
+    }
 
     async fn execute(&self, args: &str, ctx: &mut CommandContext) -> CommandResult {
         execute_named_command_from_slash(self.target_name, args, ctx)
@@ -8207,9 +8882,15 @@ impl SlashCommand for NamedCommandAdapter {
 
 #[async_trait]
 impl SlashCommand for UndoCommand {
-    fn name(&self) -> &str { "undo" }
-    fn aliases(&self) -> Vec<&str> { vec![] }
-    fn description(&self) -> &str { "Revert all file changes from the last assistant turn (alias: /revert)" }
+    fn name(&self) -> &str {
+        "undo"
+    }
+    fn aliases(&self) -> Vec<&str> {
+        vec![]
+    }
+    fn description(&self) -> &str {
+        "Revert all file changes from the last assistant turn (alias: /revert)"
+    }
     fn help(&self) -> &str {
         "Usage: /undo\n\nReverts all file changes made during the most recent assistant turn.\n\
          For finer control use /revert. To list what changed, use /checkpoints."
@@ -8224,8 +8905,12 @@ impl SlashCommand for UndoCommand {
 
 #[async_trait]
 impl SlashCommand for RevertCommand {
-    fn name(&self) -> &str { "revert" }
-    fn description(&self) -> &str { "Revert file changes from an assistant turn back to pre-turn state" }
+    fn name(&self) -> &str {
+        "revert"
+    }
+    fn description(&self) -> &str {
+        "Revert file changes from an assistant turn back to pre-turn state"
+    }
     fn help(&self) -> &str {
         "Usage: /revert [<n>|<uuid>]\n\n\
          Without args: revert the most recent assistant turn.\n\
@@ -8243,22 +8928,25 @@ impl SlashCommand for RevertCommand {
     async fn execute(&self, args: &str, ctx: &mut CommandContext) -> CommandResult {
         let snap = match claurst_core::snapshot::get_or_create(&ctx.working_dir) {
             Some(s) => s,
-            None => return CommandResult::Error(
-                "Snapshot system unavailable (git not found or not a git repo).".into()
-            ),
+            None => {
+                return CommandResult::Error(
+                    "Snapshot system unavailable (git not found or not a git repo).".into(),
+                )
+            }
         };
 
         // Collect assistant messages that have a snapshot patch (newest last).
-        let checkpoints: Vec<&claurst_core::types::Message> = ctx.messages.iter()
+        let checkpoints: Vec<&claurst_core::types::Message> = ctx
+            .messages
+            .iter()
             .filter(|m| {
-                m.role == claurst_core::types::Role::Assistant
-                    && m.snapshot_patch.is_some()
+                m.role == claurst_core::types::Role::Assistant && m.snapshot_patch.is_some()
             })
             .collect();
 
         if checkpoints.is_empty() {
             return CommandResult::Message(
-                "No revertible turns found. Run /checkpoints to see recorded file changes.".into()
+                "No revertible turns found. Run /checkpoints to see recorded file changes.".into(),
             );
         }
 
@@ -8269,12 +8957,16 @@ impl SlashCommand for RevertCommand {
         } else if let Ok(n) = args.parse::<usize>() {
             if n == 0 || n > checkpoints.len() {
                 return CommandResult::Error(format!(
-                    "Turn {} out of range (1–{}).", n, checkpoints.len()
+                    "Turn {} out of range (1–{}).",
+                    n,
+                    checkpoints.len()
                 ));
             }
             Some(checkpoints[checkpoints.len() - n])
         } else {
-            checkpoints.iter().copied()
+            checkpoints
+                .iter()
+                .copied()
                 .find(|m| m.uuid.as_deref().map_or(false, |u| u.starts_with(args)))
         };
 
@@ -8289,7 +8981,9 @@ impl SlashCommand for RevertCommand {
             None => return CommandResult::Error("Target turn has no uuid; cannot revert.".into()),
         };
 
-        let patches: Vec<claurst_core::snapshot::Patch> = ctx.messages.iter()
+        let patches: Vec<claurst_core::snapshot::Patch> = ctx
+            .messages
+            .iter()
             .skip_while(|m| m.uuid.as_deref() != Some(&target_uuid))
             .filter_map(|m| m.snapshot_patch.clone())
             .collect();
@@ -8306,8 +9000,11 @@ impl SlashCommand for RevertCommand {
             .unwrap_or_else(|| ctx.working_dir.clone());
         let path = claurst_core::session_storage::transcript_path(&project_root, &ctx.session_id);
         if path.exists() {
-            if let Err(e) = claurst_core::session_storage::truncate_after(&path, &target_uuid).await {
-                return CommandResult::Error(format!("Reverted files but could not trim transcript: {e}"));
+            if let Err(e) = claurst_core::session_storage::truncate_after(&path, &target_uuid).await
+            {
+                return CommandResult::Error(format!(
+                    "Reverted files but could not trim transcript: {e}"
+                ));
             }
         }
 
@@ -8324,42 +9021,56 @@ impl SlashCommand for RevertCommand {
 
 #[async_trait]
 impl SlashCommand for CheckpointsCommand {
-    fn name(&self) -> &str { "checkpoints" }
-    fn description(&self) -> &str { "List assistant turns that have recorded file changes" }
+    fn name(&self) -> &str {
+        "checkpoints"
+    }
+    fn description(&self) -> &str {
+        "List assistant turns that have recorded file changes"
+    }
     fn help(&self) -> &str {
         "Usage: /checkpoints\n\nShows all assistant turns in this session that modified files,\n\
          with file counts.  Use /revert <n> to roll back to a specific turn."
     }
 
     async fn execute(&self, _args: &str, ctx: &mut CommandContext) -> CommandResult {
-        let checkpoints: Vec<(usize, &claurst_core::types::Message)> = ctx.messages.iter()
+        let checkpoints: Vec<(usize, &claurst_core::types::Message)> = ctx
+            .messages
+            .iter()
             .enumerate()
             .filter(|(_, m)| {
-                m.role == claurst_core::types::Role::Assistant
-                    && m.snapshot_patch.is_some()
+                m.role == claurst_core::types::Role::Assistant && m.snapshot_patch.is_some()
             })
             .collect();
 
         if checkpoints.is_empty() {
             return CommandResult::Message(
                 "No file-change checkpoints recorded yet for this session.\n\
-                 Checkpoints are created automatically when the assistant modifies files.".into()
+                 Checkpoints are created automatically when the assistant modifies files."
+                    .into(),
             );
         }
 
         let total = checkpoints.len();
         let mut lines = vec![format!("{} checkpoint(s):", total)];
         for (rank, (_, msg)) in checkpoints.iter().rev().enumerate() {
-            let uuid_short = msg.uuid.as_deref()
+            let uuid_short = msg
+                .uuid
+                .as_deref()
                 .map(|u| &u[..u.len().min(8)])
                 .unwrap_or("?");
             let file_count = msg.snapshot_patch.as_ref().map_or(0, |p| p.files.len());
-            let preview: Vec<String> = msg.snapshot_patch.as_ref()
+            let preview: Vec<String> = msg
+                .snapshot_patch
+                .as_ref()
                 .map(|p| {
-                    p.files.iter().take(3)
-                        .map(|f| f.file_name()
-                            .map(|n| n.to_string_lossy().to_string())
-                            .unwrap_or_default())
+                    p.files
+                        .iter()
+                        .take(3)
+                        .map(|f| {
+                            f.file_name()
+                                .map(|n| n.to_string_lossy().to_string())
+                                .unwrap_or_default()
+                        })
                         .collect()
                 })
                 .unwrap_or_default();
@@ -8370,7 +9081,10 @@ impl SlashCommand for CheckpointsCommand {
             };
             lines.push(format!(
                 "  [{}] {} — {} file(s): {}",
-                rank + 1, uuid_short, file_count, preview_str
+                rank + 1,
+                uuid_short,
+                file_count,
+                preview_str
             ));
         }
         lines.push(String::new());
@@ -8383,8 +9097,12 @@ impl SlashCommand for CheckpointsCommand {
 
 #[async_trait]
 impl SlashCommand for SnapshotDiffCommand {
-    fn name(&self) -> &str { "snapshot" }
-    fn description(&self) -> &str { "Show shadow-git diff of file changes from an assistant turn" }
+    fn name(&self) -> &str {
+        "snapshot"
+    }
+    fn description(&self) -> &str {
+        "Show shadow-git diff of file changes from an assistant turn"
+    }
     fn help(&self) -> &str {
         "Usage: /snapshot [<n>|<hash>]\n\n\
          Without args: show unified diff for the most recent assistant turn.\n\
@@ -8396,19 +9114,26 @@ impl SlashCommand for SnapshotDiffCommand {
     async fn execute(&self, args: &str, ctx: &mut CommandContext) -> CommandResult {
         let snap = match claurst_core::snapshot::get_or_create(&ctx.working_dir) {
             Some(s) => s,
-            None => return CommandResult::Error(
-                "Snapshot system unavailable (git not found or not a git repo).".into()
-            ),
+            None => {
+                return CommandResult::Error(
+                    "Snapshot system unavailable (git not found or not a git repo).".into(),
+                )
+            }
         };
 
         let args = args.trim();
 
         // If a raw hash was passed, use it directly.
-        let hash = if !args.is_empty() && args.chars().all(|c| c.is_ascii_hexdigit()) && args.len() >= 8 {
+        let hash = if !args.is_empty()
+            && args.chars().all(|c| c.is_ascii_hexdigit())
+            && args.len() >= 8
+        {
             args.to_string()
         } else {
             // Otherwise find the n-th most recent checkpoint.
-            let checkpoints: Vec<&claurst_core::snapshot::Patch> = ctx.messages.iter()
+            let checkpoints: Vec<&claurst_core::snapshot::Patch> = ctx
+                .messages
+                .iter()
                 .filter_map(|m| {
                     if m.role == claurst_core::types::Role::Assistant {
                         m.snapshot_patch.as_ref()
@@ -8429,9 +9154,13 @@ impl SlashCommand for SnapshotDiffCommand {
             } else {
                 match args.parse::<usize>() {
                     Ok(n) if n >= 1 && n <= checkpoints.len() => n - 1,
-                    _ => return CommandResult::Error(format!(
-                        "Turn '{}' out of range (1–{}).", args, checkpoints.len()
-                    )),
+                    _ => {
+                        return CommandResult::Error(format!(
+                            "Turn '{}' out of range (1–{}).",
+                            args,
+                            checkpoints.len()
+                        ))
+                    }
                 }
             };
             // Reverse so idx=0 is newest.
@@ -8441,20 +9170,26 @@ impl SlashCommand for SnapshotDiffCommand {
 
         let diff = snap.diff(&hash).await;
         if diff.is_empty() {
-            CommandResult::Message(format!("No changes since snapshot {}.", &hash[..hash.len().min(8)]))
+            CommandResult::Message(format!(
+                "No changes since snapshot {}.",
+                &hash[..hash.len().min(8)]
+            ))
         } else {
             CommandResult::Message(diff)
         }
     }
 }
 
-
 // ---- /providers -------------------------------------------------------------
 
 #[async_trait]
 impl SlashCommand for ProvidersCommand {
-    fn name(&self) -> &str { "providers" }
-    fn description(&self) -> &str { "List available AI providers and their status" }
+    fn name(&self) -> &str {
+        "providers"
+    }
+    fn description(&self) -> &str {
+        "List available AI providers and their status"
+    }
     fn help(&self) -> &str {
         "Usage: /providers\n\nList all providers registered in the model registry with their\nmodel counts, context windows, and pricing information."
     }
@@ -8484,15 +9219,23 @@ impl SlashCommand for ProvidersCommand {
         let mut lines = vec!["Available providers:\n".to_string()];
         for provider in &provider_keys {
             let models = &by_provider[provider];
-            lines.push(format!("\n{} ({} model{})", provider.to_uppercase(), models.len(),
-                if models.len() == 1 { "" } else { "s" }));
+            lines.push(format!(
+                "\n{} ({} model{})",
+                provider.to_uppercase(),
+                models.len(),
+                if models.len() == 1 { "" } else { "s" }
+            ));
             for m in models.iter().take(3) {
                 let cost_str = match (m.cost_input, m.cost_output) {
                     (Some(i), Some(o)) => format!("${:.2}/${:.2} per 1M", i, o),
                     _ => "free/local".to_string(),
                 };
-                lines.push(format!("  {} — {}K ctx, {}",
-                    m.info.id, m.info.context_window / 1000, cost_str));
+                lines.push(format!(
+                    "  {} — {}K ctx, {}",
+                    m.info.id,
+                    m.info.context_window / 1000,
+                    cost_str
+                ));
             }
             if models.len() > 3 {
                 lines.push(format!("  ... and {} more", models.len() - 3));
@@ -8507,8 +9250,12 @@ impl SlashCommand for ProvidersCommand {
 
 #[async_trait]
 impl SlashCommand for ConnectCommand {
-    fn name(&self) -> &str { "connect" }
-    fn description(&self) -> &str { "Connect an AI provider" }
+    fn name(&self) -> &str {
+        "connect"
+    }
+    fn description(&self) -> &str {
+        "Connect an AI provider"
+    }
     fn help(&self) -> &str {
         "Usage: /connect\n\nOpens the interactive provider picker dialog.\nSelect a provider to see setup instructions."
     }
@@ -8523,8 +9270,12 @@ impl SlashCommand for ConnectCommand {
 
 #[async_trait]
 impl SlashCommand for AgentCommand {
-    fn name(&self) -> &str { "agent" }
-    fn description(&self) -> &str { "List available agents or get info about a specific agent" }
+    fn name(&self) -> &str {
+        "agent"
+    }
+    fn description(&self) -> &str {
+        "List available agents or get info about a specific agent"
+    }
     fn help(&self) -> &str {
         "Usage: /agent [name]\n\nWithout arguments, lists all available named agents.\nWith a name, shows details for that agent.\n\nTo use an agent, start Claurst with: --agent <name>"
     }
@@ -8582,9 +9333,7 @@ impl SlashCommand for AgentCommand {
             if let Some(ref prompt) = def.prompt {
                 output.push_str(&format!("\nSystem prompt prefix:\n  {}\n", prompt));
             }
-            output.push_str(&format!(
-                "\nTo activate: claurst --agent {}", agent_name
-            ));
+            output.push_str(&format!("\nTo activate: claurst --agent {}", agent_name));
             CommandResult::Message(output)
         } else {
             CommandResult::Error(format!(
@@ -8599,8 +9348,12 @@ impl SlashCommand for AgentCommand {
 
 #[async_trait]
 impl SlashCommand for ManagedAgentsCommand {
-    fn name(&self) -> &str { "managed-agents" }
-    fn description(&self) -> &str { "Configure and manage the manager-executor agent architecture" }
+    fn name(&self) -> &str {
+        "managed-agents"
+    }
+    fn description(&self) -> &str {
+        "Configure and manage the manager-executor agent architecture"
+    }
     fn help(&self) -> &str {
         "Usage: /managed-agents [subcommand]\n\n\
          Subcommands:\n\
@@ -8621,24 +9374,36 @@ impl SlashCommand for ManagedAgentsCommand {
     }
 
     async fn execute(&self, args: &str, ctx: &mut CommandContext) -> CommandResult {
-        use claurst_core::{BudgetSplitPolicy, ManagedAgentConfig, builtin_managed_agent_presets};
+        use claurst_core::{builtin_managed_agent_presets, BudgetSplitPolicy, ManagedAgentConfig};
 
         let args = args.trim();
 
         // Helper to format current config as status string
         fn format_status(cfg: &Option<ManagedAgentConfig>) -> String {
             match cfg {
-                None => "Managed Agents: NOT CONFIGURED\n\nRun /managed-agents setup to get started.".to_string(),
+                None => {
+                    "Managed Agents: NOT CONFIGURED\n\nRun /managed-agents setup to get started."
+                        .to_string()
+                }
                 Some(c) => {
-                    let state = if c.enabled { "ACTIVE" } else { "CONFIGURED but inactive" };
+                    let state = if c.enabled {
+                        "ACTIVE"
+                    } else {
+                        "CONFIGURED but inactive"
+                    };
                     let budget_str = match c.total_budget_usd {
                         Some(b) => format!("${:.2} total", b),
                         None => "no cap".to_string(),
                     };
                     let split_str = match &c.budget_split {
                         BudgetSplitPolicy::SharedPool => "shared pool".to_string(),
-                        BudgetSplitPolicy::Percentage { manager_pct } => format!("{}% manager", manager_pct),
-                        BudgetSplitPolicy::FixedCaps { manager_usd, executor_usd } => {
+                        BudgetSplitPolicy::Percentage { manager_pct } => {
+                            format!("{}% manager", manager_pct)
+                        }
+                        BudgetSplitPolicy::FixedCaps {
+                            manager_usd,
+                            executor_usd,
+                        } => {
                             format!("${:.2} mgr / ${:.2} exe", manager_usd, executor_usd)
                         }
                     };
@@ -8681,7 +9446,10 @@ impl SlashCommand for ManagedAgentsCommand {
             let presets = builtin_managed_agent_presets();
             let mut out = "Managed Agents Setup\n\nQuickstart — apply a preset:\n\n".to_string();
             for p in &presets {
-                out.push_str(&format!("  /managed-agents preset {}\n    {}\n\n", p.name, p.description));
+                out.push_str(&format!(
+                    "  /managed-agents preset {}\n    {}\n\n",
+                    p.name, p.description
+                ));
             }
             out.push_str("\nOr configure manually:\n  /managed-agents configure manager-model <provider/model>\n  /managed-agents configure executor-model <provider/model>\n  /managed-agents enable\n\nModel format: provider/model (e.g. anthropic/claude-opus-4-6, openai/gpt-4o, google/gemini-2.5-flash)\nAny provider registered in the ProviderRegistry can be used.");
             return CommandResult::Message(out);
@@ -8689,7 +9457,9 @@ impl SlashCommand for ManagedAgentsCommand {
 
         if let Some(preset_name) = args.strip_prefix("preset ").map(str::trim) {
             let presets = builtin_managed_agent_presets();
-            let found = presets.iter().find(|p| p.name.eq_ignore_ascii_case(preset_name));
+            let found = presets
+                .iter()
+                .find(|p| p.name.eq_ignore_ascii_case(preset_name));
             match found {
                 None => {
                     let names: Vec<&str> = presets.iter().map(|p| p.name).collect();
@@ -8729,17 +9499,21 @@ impl SlashCommand for ManagedAgentsCommand {
         }
 
         if let Some(rest) = args.strip_prefix("configure ").map(str::trim) {
-            let mut cfg = ctx.config.managed_agents.clone().unwrap_or(ManagedAgentConfig {
-                enabled: false,
-                manager_model: String::new(),
-                executor_model: String::new(),
-                executor_max_turns: 10,
-                max_concurrent_executors: 4,
-                budget_split: BudgetSplitPolicy::SharedPool,
-                total_budget_usd: None,
-                preset_name: None,
-                executor_isolation: false,
-            });
+            let mut cfg = ctx
+                .config
+                .managed_agents
+                .clone()
+                .unwrap_or(ManagedAgentConfig {
+                    enabled: false,
+                    manager_model: String::new(),
+                    executor_model: String::new(),
+                    executor_max_turns: 10,
+                    max_concurrent_executors: 4,
+                    budget_split: BudgetSplitPolicy::SharedPool,
+                    total_budget_usd: None,
+                    preset_name: None,
+                    executor_isolation: false,
+                });
 
             if let Some(val) = rest.strip_prefix("manager-model ").map(str::trim) {
                 cfg.manager_model = val.to_string();
@@ -8768,21 +9542,42 @@ impl SlashCommand for ManagedAgentsCommand {
                     cfg.budget_split = BudgetSplitPolicy::SharedPool;
                 } else if let Some(pct_str) = val.strip_prefix("percentage:") {
                     match pct_str.parse::<u8>() {
-                        Ok(pct) => cfg.budget_split = BudgetSplitPolicy::Percentage { manager_pct: pct },
-                        Err(_) => return CommandResult::Error(format!("Invalid percentage: '{}'", pct_str)),
+                        Ok(pct) => {
+                            cfg.budget_split = BudgetSplitPolicy::Percentage { manager_pct: pct }
+                        }
+                        Err(_) => {
+                            return CommandResult::Error(format!(
+                                "Invalid percentage: '{}'",
+                                pct_str
+                            ))
+                        }
                     }
                 } else if let Some(caps_str) = val.strip_prefix("fixed:") {
                     let parts: Vec<&str> = caps_str.splitn(2, ':').collect();
                     if parts.len() == 2 {
                         match (parts[0].parse::<f64>(), parts[1].parse::<f64>()) {
-                            (Ok(m), Ok(e)) => cfg.budget_split = BudgetSplitPolicy::FixedCaps { manager_usd: m, executor_usd: e },
-                            _ => return CommandResult::Error("Invalid fixed caps format. Use fixed:<manager>:<executor>".to_string()),
+                            (Ok(m), Ok(e)) => {
+                                cfg.budget_split = BudgetSplitPolicy::FixedCaps {
+                                    manager_usd: m,
+                                    executor_usd: e,
+                                }
+                            }
+                            _ => {
+                                return CommandResult::Error(
+                                    "Invalid fixed caps format. Use fixed:<manager>:<executor>"
+                                        .to_string(),
+                                )
+                            }
                         }
                     } else {
-                        return CommandResult::Error("Invalid fixed caps format. Use fixed:<manager>:<executor>".to_string());
+                        return CommandResult::Error(
+                            "Invalid fixed caps format. Use fixed:<manager>:<executor>".to_string(),
+                        );
                     }
                 } else {
-                    return CommandResult::Error("Use: shared | percentage:<pct> | fixed:<manager>:<executor>".to_string());
+                    return CommandResult::Error(
+                        "Use: shared | percentage:<pct> | fixed:<manager>:<executor>".to_string(),
+                    );
                 }
             } else {
                 return CommandResult::Error(format!(
@@ -8799,7 +9594,10 @@ impl SlashCommand for ManagedAgentsCommand {
             }
             let mut new_config = ctx.config.clone();
             new_config.managed_agents = Some(cfg);
-            return CommandResult::ConfigChangeMessage(new_config, "Managed agents configuration updated.".to_string());
+            return CommandResult::ConfigChangeMessage(
+                new_config,
+                "Managed agents configuration updated.".to_string(),
+            );
         }
 
         if let Some(amount_str) = args.strip_prefix("budget ").map(str::trim) {
@@ -8807,7 +9605,12 @@ impl SlashCommand for ManagedAgentsCommand {
                 Err(_) => return CommandResult::Error(format!("Invalid amount: '{}'", amount_str)),
                 Ok(amount) => {
                     let mut cfg = match ctx.config.managed_agents.clone() {
-                        None => return CommandResult::Error("No managed agents config. Run /managed-agents setup first.".to_string()),
+                        None => {
+                            return CommandResult::Error(
+                                "No managed agents config. Run /managed-agents setup first."
+                                    .to_string(),
+                            )
+                        }
                         Some(c) => c,
                     };
                     cfg.total_budget_usd = if amount <= 0.0 { None } else { Some(amount) };
@@ -8831,11 +9634,17 @@ impl SlashCommand for ManagedAgentsCommand {
 
         if args == "enable" {
             let mut cfg = match ctx.config.managed_agents.clone() {
-                None => return CommandResult::Error("No managed agents config. Run /managed-agents setup first.".to_string()),
+                None => {
+                    return CommandResult::Error(
+                        "No managed agents config. Run /managed-agents setup first.".to_string(),
+                    )
+                }
                 Some(c) => c,
             };
             if cfg.manager_model.is_empty() || cfg.executor_model.is_empty() {
-                return CommandResult::Error("manager_model and executor_model must be set before enabling.".to_string());
+                return CommandResult::Error(
+                    "manager_model and executor_model must be set before enabling.".to_string(),
+                );
             }
             cfg.enabled = true;
             if let Err(e) = save_settings_mutation(|settings| {
@@ -8846,7 +9655,10 @@ impl SlashCommand for ManagedAgentsCommand {
             }
             let mut new_config = ctx.config.clone();
             new_config.managed_agents = Some(cfg);
-            return CommandResult::ConfigChangeMessage(new_config, "Managed agents ENABLED.".to_string());
+            return CommandResult::ConfigChangeMessage(
+                new_config,
+                "Managed agents ENABLED.".to_string(),
+            );
         }
 
         if args == "disable" {
@@ -8863,7 +9675,10 @@ impl SlashCommand for ManagedAgentsCommand {
             }
             let mut new_config = ctx.config.clone();
             new_config.managed_agents = Some(cfg);
-            return CommandResult::ConfigChangeMessage(new_config, "Managed agents disabled.".to_string());
+            return CommandResult::ConfigChangeMessage(
+                new_config,
+                "Managed agents disabled.".to_string(),
+            );
         }
 
         if args == "reset" {
@@ -8875,7 +9690,10 @@ impl SlashCommand for ManagedAgentsCommand {
             }
             let mut new_config = ctx.config.clone();
             new_config.managed_agents = None;
-            return CommandResult::ConfigChangeMessage(new_config, "Managed agents configuration removed.".to_string());
+            return CommandResult::ConfigChangeMessage(
+                new_config,
+                "Managed agents configuration removed.".to_string(),
+            );
         }
 
         CommandResult::Error(format!(
@@ -9084,9 +9902,9 @@ pub fn all_commands() -> Vec<Box<dyn SlashCommand>> {
 /// Find a command by name or alias.
 pub fn find_command(name: &str) -> Option<Box<dyn SlashCommand>> {
     let name = name.trim_start_matches('/');
-    all_commands().into_iter().find(|c| {
-        c.name() == name || c.aliases().contains(&name)
-    })
+    all_commands()
+        .into_iter()
+        .find(|c| c.name() == name || c.aliases().contains(&name))
 }
 
 /// Build `HelpEntry` values for all non-hidden commands, suitable for
@@ -9116,15 +9934,22 @@ struct TemplateCommand {
 
 #[async_trait]
 impl SlashCommand for TemplateCommand {
-    fn name(&self) -> &str { &self.name }
+    fn name(&self) -> &str {
+        &self.name
+    }
     fn description(&self) -> &str {
-        self.template.description.as_deref().unwrap_or("Custom command")
+        self.template
+            .description
+            .as_deref()
+            .unwrap_or("Custom command")
     }
     async fn execute(&self, args: &str, _ctx: &mut CommandContext) -> CommandResult {
         let mut words = args.split_whitespace();
         let arg1 = words.next().unwrap_or("");
         let arg2 = words.next().unwrap_or("");
-        let prompt = self.template.template
+        let prompt = self
+            .template
+            .template
             .replace("$ARGUMENTS", args)
             .replace("$1", arg1)
             .replace("$2", arg2);
@@ -9135,12 +9960,16 @@ impl SlashCommand for TemplateCommand {
 /// Build slash commands from user-defined command templates stored in
 /// `settings.commands`.
 pub fn commands_from_settings(settings: &claurst_core::Settings) -> Vec<Box<dyn SlashCommand>> {
-    settings.commands.iter().map(|(name, template)| {
-        Box::new(TemplateCommand {
-            name: name.clone(),
-            template: template.clone(),
-        }) as Box<dyn SlashCommand>
-    }).collect()
+    settings
+        .commands
+        .iter()
+        .map(|(name, template)| {
+            Box::new(TemplateCommand {
+                name: name.clone(),
+                template: template.clone(),
+            }) as Box<dyn SlashCommand>
+        })
+        .collect()
 }
 
 // ---------------------------------------------------------------------------
@@ -9156,14 +9985,19 @@ struct SkillCommand {
 
 #[async_trait]
 impl SlashCommand for SkillCommand {
-    fn name(&self) -> &str { &self.name }
-    fn description(&self) -> &str { &self.description }
+    fn name(&self) -> &str {
+        &self.name
+    }
+    fn description(&self) -> &str {
+        &self.description
+    }
 
     async fn execute(&self, args: &str, _ctx: &mut CommandContext) -> CommandResult {
         let mut words = args.split_whitespace();
         let arg1 = words.next().unwrap_or("");
         let arg2 = words.next().unwrap_or("");
-        let prompt = self.template
+        let prompt = self
+            .template
             .replace("$ARGUMENTS", args)
             .replace("$1", arg1)
             .replace("$2", arg2);
@@ -9184,10 +10018,8 @@ pub fn commands_from_discovered_skills(
     let discovered = claurst_core::discover_skills(cwd, skills_config);
     // Build a set of built-in command names so we can skip collisions.
     let all_cmds = all_commands();
-    let builtin_names: std::collections::HashSet<&str> = all_cmds
-        .iter()
-        .map(|c| c.name())
-        .collect();
+    let builtin_names: std::collections::HashSet<&str> =
+        all_cmds.iter().map(|c| c.name()).collect();
 
     discovered
         .into_values()
@@ -9203,11 +10035,10 @@ pub fn commands_from_discovered_skills(
 }
 
 /// Execute a slash command string (with leading /).
-pub async fn execute_command(
-    input: &str,
-    ctx: &mut CommandContext,
-) -> Option<CommandResult> {
-    if !claurst_tui::input::is_slash_command(input) { return None; }
+pub async fn execute_command(input: &str, ctx: &mut CommandContext) -> Option<CommandResult> {
+    if !claurst_tui::input::is_slash_command(input) {
+        return None;
+    }
     let (name, args) = claurst_tui::input::parse_slash_command(input);
 
     // First check built-in commands.
@@ -9218,7 +10049,10 @@ pub async fn execute_command(
     // Check user-defined command templates from settings.
     let cmd_name = name.trim_start_matches('/');
     if let Some(tmpl) = ctx.config.commands.get(cmd_name).cloned() {
-        let tc = TemplateCommand { name: cmd_name.to_string(), template: tmpl };
+        let tc = TemplateCommand {
+            name: cmd_name.to_string(),
+            template: tmpl,
+        };
         return Some(tc.execute(args, ctx).await);
     }
 
@@ -9342,13 +10176,41 @@ mod tests {
     #[test]
     fn test_core_commands_present() {
         let expected = [
-            "help", "clear", "compact", "cost", "exit", "model",
-            "config", "version", "status", "diff", "memory", "hooks",
-            "permissions", "plan", "tasks", "session", "login", "logout", "refresh",
-            "feedback", "usage", "plugin", "reload-plugins",
-            "add-dir", "agents", "branch", "tag",
-            "passes", "ide", "pr-comments", "desktop", "mobile",
-            "install-github-app", "web-setup", "stickers",
+            "help",
+            "clear",
+            "compact",
+            "cost",
+            "exit",
+            "model",
+            "config",
+            "version",
+            "status",
+            "diff",
+            "memory",
+            "hooks",
+            "permissions",
+            "plan",
+            "tasks",
+            "session",
+            "login",
+            "logout",
+            "refresh",
+            "feedback",
+            "usage",
+            "plugin",
+            "reload-plugins",
+            "add-dir",
+            "agents",
+            "branch",
+            "tag",
+            "passes",
+            "ide",
+            "pr-comments",
+            "desktop",
+            "mobile",
+            "install-github-app",
+            "web-setup",
+            "stickers",
         ];
         for name in &expected {
             assert!(
@@ -9453,9 +10315,7 @@ mod tests {
         let result = cmd.execute("--codex --label work", &mut ctx).await;
         match result {
             CommandResult::StartLoginForProvider {
-                provider,
-                label,
-                ..
+                provider, label, ..
             } => {
                 assert_eq!(provider, claurst_core::accounts::PROVIDER_CODEX);
                 assert_eq!(label.as_deref(), Some("work"));
