@@ -369,6 +369,7 @@ impl Tool for AgentTool {
             managed_agents: None,
             framework_identity: String::new(),
             periodic_nudge_files: Vec::new(),
+            coordinator_mode: false,
         };
         // -----------------------------------------------------------------------
         // Background mode: spawn and return agent_id immediately.
@@ -629,6 +630,7 @@ pub fn init_team_swarm_runner() {
                     output_style_prompt: ctx.config.resolve_output_style_prompt(),
                     provider_registry: Some(Arc::new(provider_registry)),
                     model_registry: Some(model_registry),
+                    coordinator_mode: false,
                     ..Default::default()
                 };
 

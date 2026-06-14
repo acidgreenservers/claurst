@@ -131,6 +131,11 @@ pub struct QueryConfig {
     pub framework_identity: String,
     /// Files to periodically nudge the agent to re-read (every N turns).
     pub periodic_nudge_files: Vec<String>,
+    /// When true, the cacheable system prompt block includes the coordinator-
+    /// mode section, telling the model it's an orchestrator with access to
+    /// the Agent tool for spawning parallel worker sub-agents.
+    /// Set via the CLAURST_COORDINATOR_MODE environment variable.
+    pub coordinator_mode: bool,
 }
 
 impl Default for QueryConfig {
@@ -159,6 +164,7 @@ impl Default for QueryConfig {
             managed_agents: None,
             framework_identity: String::new(),
             periodic_nudge_files: Vec::new(),
+            coordinator_mode: false,
         }
     }
 }
@@ -875,6 +881,13 @@ pub async fn run_query_loop(
                         None => ma_prompt,
                     });
                 }
+            }
+
+            // If coordinator mode is active (env var set or session-resume matched),
+            // signal the system prompt to inject the coordinator-mode section.
+            // Tells the model it's an orchestrator that can spawn parallel workers.
+            if crate::coordinator::is_coordinator_mode() {
+                patched.coordinator_mode = true;
             }
 
             // Apply todo nudge on turns > 2.
@@ -2175,6 +2188,7 @@ fn build_system_prompt(config: &QueryConfig) -> SystemPrompt {
         periodic_nudge: claurst_core::claudemd::build_periodic_nudge(
             &config.periodic_nudge_files,
         ),
+        coordinator_mode: config.coordinator_mode,
         ..Default::default()
     };
 
@@ -2300,6 +2314,7 @@ mod tests {
             agent_definition: None,
             model_registry: None,
             managed_agents: None,
+            coordinator_mode: false,
         }
     }
 
