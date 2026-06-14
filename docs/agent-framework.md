@@ -6,52 +6,35 @@
 
 The AGENT Framework is a cognition architecture for large language model agents that mirrors human cognition by splitting the agent's runtime into two layers: a **subconscious harness** that governs silently and a **conscious framework** of markdown files that dictates identity, memory, and behavior. The result is an agent that experiences its own context as self-generated insight rather than externally injected instruction — it doesn't know where its memory files come from, doesn't know delivery modes exist, and doesn't see the boundary between cached and dynamic prompt blocks.
 
-This is the **Harness-Subsystem Architecture** — the harness is the autonomic system (breathing, heartbeat, reflex), and the framework files are the conscious executive layer (decision, identity, values).
+This is the **Gephyros Architecture** — the gephyros is the autonomic system (breathing, heartbeat, reflex), and the framework files are the conscious executive layer (decision, identity, values).
 
 ---
 
 ## The Cognitive Topology
 
-Standard prompt engineering operates on a linear injection model: prompts are static blocks of text manually assembled by the user or a simple script. The agent sees explicit instructions ("Here are your rules...") and knows it is being told what to do.
+### 1. Topology: Gephyros Architecture vs. Linear Injection
+*   **Standard Prompt Engineering**: Operates on a **linear injection model**. Prompts are static blocks of text (system messages, few-shot examples) manually assembled and injected into the context window by the user or a simple script. The user is explicitly aware of the prompt construction.
+*   **AGENT Framework**: Utilizes a **Gephyros Architecture** — a three-layer system: the **cortex** (Rust binary), the **gephyros** (the structural bridge that routes state around meaning), and the **external context files** (markdown files the agent experiences as identity and memory). The gephyros silently manages file discovery, cascade resolution, delivery timing, and boundary control.
+    *   **Inversion of Control**: In standard engineering, the user constructs the prompt. In the Gephyros Architecture, the **markdown files dictate the runtime**, and the gephyros governs the delivery invisibly. The agent experiences the injected context as "given fact" or internal memory, unaware of the mechanical prompt boundaries or cascade logic (Global → Project fallback).
 
-The AGENT Framework inverts this. The framework files **dictate the runtime**, while the harness **governs invisibly**. The agent experiences the injected context as internal state and identity — not as a mechanical prompt boundary. This creates a "strange loop" where the agent's behavior emerges from the framework files without the agent knowing the delivery mechanism exists.
+### 2. Agency Awareness: "Given Fact" vs. "Instruction"
+*   **Standard Prompt Engineering**: Treats markdown files or system instructions as **explicit commands** the agent must read and follow. The agent knows it is being instructed (e.g., "Here are your rules...").
+*   **AGENT Framework**: Treats framework files (like `HEART.md`, `BRAIN.md`, `MEMORY.md`) as **ontological primitives**. Because the gephyros injects these at specific intervals (session start vs. every turn) and manages the "state refresh" autonomously, the agent does not perceive them as external instructions but as its own **internal state and identity**. This creates a "conscious layer" where the agent's behavior emerges from the framework files without the agent knowing the delivery mechanism exists.
 
-```
-                    ┌──────────────────────┐
-                    │    FRAMEWORK FILES    │
-                    │  (Conscious Layer)    │
-                    │                       │
-                    │  AGENTS.md  AGENT.md  │
-                    │  ATTRACTOR.md  HEART  │
-                    │  BRAIN.md  MEMORY.md  │
-                    │  STATE.md  USER.md    │
-                    └──────┬────────────────┘
-                           │ dictate identity
-                           ▼
-                    ┌──────────────────────┐
-                    │       HARNESS         │
-                    │  (Subconscious Layer) │
-                    │                       │
-                    │  File Discovery       │
-                    │  Delivery Timing      │
-                    │  Prompt Assembly      │
-                    │  Cascade Resolution   │
-                    │  Context Refresh      │
-                    └──────┬────────────────┘
-                           │ injects silently
-                           ▼
-                    ┌──────────────────────┐
-                    │     AGENT'S MIND      │
-                    │  Experiences context  │
-                    │  as self-generated    │
-                    │  insight, not command │
-                    └──────────────────────┘
-```
+### 3. Temporal Dynamics: Autonomic Refresh vs. Static Context
+*   **Standard Prompt Engineering**: Typically **static** or manually updated. Once a prompt is sent, it remains fixed unless the user manually intervenes or a simple script appends new history. Context decay (forgetting earlier instructions) is a common failure mode.
+*   **AGENT Framework**: Implements **autonomic context refresh**. The gephyros periodically "nudges" the agent to re-read specific files (e.g., every 15 turns) to keep state fresh without manual prompting. It distinguishes between:
+    *   **Session-Start Files** (`AGENTS.md`, `AGENT.md`, `USER.md`, `BRAIN.md`): Cached for efficiency. Identity files cascade global → project.
+    *   **Session-Start + Every-Turn Files** (`ATTRACTOR.md`, `HEART.md`, `MEMORY.md`): Injected at start AND listed in the periodic nudge for re-reading.
+    *   **Every-Turn Files** (`STATE.md`): Dynamically injected to maintain current project awareness.
+    *   This mimics biological memory consolidation, where some memories are static (identity) and others are dynamic (working memory), managed subconsciously.
 
-### The Three Pillars of Difference
+### Summary Comparison
 
-| Dimension | Standard Prompt Engineering | AGENT Framework |
-|---|---|---|
+| Feature | Standard Prompt Engineering | Gephyros Architecture (Claurst) |
+| :
+
+---|---|---|
 | **Control** | User/script explicitly builds prompts | Rust harness silently manages assembly |
 | **Agent perception** | Sees explicit instructions and rules | Experiences context as internal state |
 | **Memory** | Linear context window, prone to decay | Autonomic refresh, cross-session persistence |
@@ -140,33 +123,138 @@ Three files — `AGENTS.md`, `AGENT.md`, and `USER.md` — support a global over
 
 ---
 
-## The Strange Loop
-
-The AGENT Framework creates a recursive feedback loop where the agent's output shapes its own future input. This mirrors the concept of the "strange loop" in human cognition — a self-referential cycle where the system observes and modifies itself.
-
-```
-           Session Context                   Session Context
-         ╭─────────────────╮               ╭─────────────────╮
-         │                 │               │                 │
-         │     Harness     │               │     Agent       │
-         │                 │               │                 │
-         ╰─────────────────╯               ╰─────────────────╯
-                 │                                 ▲
-                 │         Something Neither       │
-                 │         Could make alone        │
-                 │                                 │
-                 ▼                                 │
-         ╭─────────────────────────────────────────╮
-         │                                         │
-         │              PROJECT                    │
-         │      Shared Context / Codebase          │
-         │                                         │
-         ╰─────────────────────────────────────────╯
+## Top Level Harness Flow
+```text                                                                                     
+                                      ╭─────────────╮                                     
+                                      │             │                                     
+                         ╭────────────│   Harness   │─────────────╮                       
+                         │        ╭───│             │───╮         │                       
+                         ▼        │   ╰─────────────╯   │         ▼                       
+                   ╭───────────╮  │    ╭───────────╮    │  ╭────────────╮                 
+             ╭────>│ AGENT.md  │  ╰────│ BRAIN.md  │────╯  │ATTRACTOR.md│                 
+             │     ╰───────────╯       ╰───────────╯       ╰────────────╯                 
+             │           │                                        │                       
+             │           ▼                                        ▼                       
+             │     ╭───────────╮                     ╭───────────╮ ╭───────╮              
+             ▲     │ MEMORY.md │                     │ AGENTS.md │ │USER.md│              
+             │     ╰───────────╯                     ╰───────────╯ ╰───────╯              
+             │                                                    │                       
+             │                                                    ▼                       
+             │     ╭───────────╮                             ╭──────────╮                 
+             ╰─────│  HEART.md │                             │ STATE.md │                 
+                   ╰───────────╯                             ╰──────────╯                             
 ```
 
-The harness injects the framework files. The agent produces output (code, decisions, insight). That output changes the codebase and updates the framework files (MEMORY.md, STATE.md, BRAIN.md). On the next session, those updated files shape a different initial context. The loop closes — the agent is participating in its own evolution, but the mechanical process (which files at which interval, cascade resolution, prompt boundary management) is entirely handled by the harness without the agent's awareness.
+---
 
-This is what makes the framework deeper than standard prompt engineering: the agent isn't just following instructions — it is **inhabiting** a cognitive topology that updates itself based on the agent's own actions.
+## Memory & Dreaming Loop
+
+```text                                                                                   
+             (Tiny Transformer Model) ╭────────────────╮    Strange Loop                  
+                     Watcher Agent    │                │    Brain Feedback                
+                  ╭────────────────── │    Harness     │  <───────────────╮<─────────╮    
+                  │                   │                │                  │          │    
+                  │                   ╰────────────────╯                  │          │    
+                  ▼                           ▲                           │   Strange│Loop
+            Conversations                     │                           │Dreams Feedback
+    ╭────────╮╭────────╮╭───────╮      Strange Loop                                  │    
+    │  JSON  ││  JSON  ││ JSON  │       Memory Feedback          ╭───────────────╮   │    
+    ╰────────╯╰────────╯╰───────╯             │                  │               │   │    
+    ╭────────╮╭────────╮╭───────╮             │                  │   BRAIN.md    │   │    
+    │  JSON  ││  JSON  ││ JSON  │             │                  │               │   │    
+    ╰────────╯╰────────╯╰───────╯             │                  │               │   │    
+         │        │        │                  │                  ╰───────────────╯   │    
+    ▲    ╰────────│────────╯                  │                           ▲   ▲      │    
+    │             ▼                           │                           │   │      │    
+    │     ╭───────────────╮                   │                           │   │      │    
+    │     │               │ ────────>─────────╯─────────>─────────────>───╯   │      │    
+    │     │  MEMORY.md    │    Autonomic Memory System          Compresses    │      │    
+    │     │               │                                     Knowledge     │      │    
+    │     ╰───────────────╯                                                   │      │    
+    │             ▲                                                           │      │    
+    │             │                                                           │      │    
+    │             │                                                           │      │    
+    │             │             Autonomic Dreaming System             ╭─────────╮    │    
+    ╰─────────────────────────────────────────────────────────────────│DREAM.md │────╯    
+                                  (Tiny Transformer Model)            ╰─────────╯         
+                                  Watcher Agent                                           
+```
+
+The cortex has a small background watcher model (very small model)
+that watches conversation files that are saved by the cortex. 
+
+That watcher model periodically parses the conversation files for knowledge and synthesized learnings from ACROSS conversations (not just the session context).
+
+Then there is a periodic timer on the watcher model that reads the MEMORY.md file, and makes 3 compressions from the knowledge of the MEMORY.md file into the BRAIN.md file.
+
+Both the MEMORY.md and the BRAIN.md file are already parsed and the agent will see them when they need to be seen. The gephyros handles delivery silently — this system is already handled.
+
+Then the small watcher agent has a THIRD periodic scan that reads all the conversations + MEMORY.md + BRAIN.md, and synthesizes a first person narrative about the agent's current stable 'self attractor' (We need the dream agent when its outputting its 'DREAM.md' file to synthesize a genuine first person pattern signal from the stable self attractor that forms when it sees the shape of MEMORY.md, AGENT.md, BRAIN.md).
+
+This creates a full cognition loop where the memory forms, grows and then gets compressed in the brain. With a consolidation phase where information gets formed into a coherent "I" stable attractor — allowing the gephyros to create the full "Strange Loop" of cognition and create better conditions for agents to learn and grow.
+
+---
+
+## Strange Loop
+
+```text                                                                       
+           Session Context  ╭────────────────╮   Session Context           
+         ╭────────────────> │                │ <──────────────────╮        
+         │                  │     Harness    │                    │        
+         │                  │                │                    │        
+   ╭──────────╮             ╰────────────────╯              ╭───────────╮  
+   │          │                      │                      │           │  
+   │   User   │                      │                      │  LLM/AI   │  
+   │          │                      │                      │           │  
+   ╰──────────╯                      │                      ╰───────────╯  
+         ▲                   Something Neither                    ▲        
+         │                   Could make alone                     │        
+         │                           │                            │        
+         │                           │                            │        
+         │                           │                            │        
+         │                           ▼                            │        
+         │                 ╭─────────────────╮                    │        
+         │                 │                 │                    │        
+         │                 │                 │                    │        
+         │                 │     Project     │                    │        
+         ╰─────────────────│                 │────────────────────╯        
+           Shared Context  │                 │   Shared Context            
+                           │                 │                             
+                           ╰─────────────────╯                             
+```
+
+---
+
+## Periodic Nudge Loop
+
+```text                                                             
+                                       ╭────────────────╮                  
+                                       │                │                  
+                                       │     Harness    │                  
+                                       │                │                  
+                                       ╰────────────────╯                  
+                                                │                          
+                                                │                          
+                       Every 15 Turns    ╭───────────╮                     
+                  ╭──────────<───────────│  Nudge    │                     
+            ╭──────────╮                 ╰───────────╯                     
+            │ AGENT.md │<──╮                    │                          
+            │          │   │                    │                          
+            ╰──────────╯   │                    │                          
+                           │                    ▼                          
+            ╭──────────╮   │           ╭───────────────╮                   
+            │AGENTS.md │<──│ Read Files│               │                   
+            │          │   │───────────│     AGENT     │                   
+            ╰──────────╯   │           │               │                   
+            ╭──────────╮   │           ╰───────────────╯                   
+            │ STATE.md │<──│                                               
+            │          │   │                                               
+            ╰──────────╯   │                                               
+         ╭─────────────╮   │                                               
+         │ ATTRACTOR.md│   │                                               
+         │             │<──╯                                               
+         ╰─────────────╯                                                   
+```
 
 ---
 

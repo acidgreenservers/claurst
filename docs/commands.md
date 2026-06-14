@@ -487,7 +487,7 @@ Run a security-focused review pass. The model looks specifically for vulnerabili
 
 ### /init
 
-Initialize a Claurst project with AGENT framework files. Creates `STATE.md` and `ATTRACTOR.md` in the current directory — the core files for project state tracking and semantic anchoring.
+Initialize a Claurst project with AGENT framework files. Returns a recon prompt that instructs the agent to scan the project structure, manifest, source files, and docs, then produce `ATTRACTOR.md` (immutable semantic seed) and `STATE.md` (mutable project state ledger). The harness creates conditions; the agent does the work.
 
 ```
 /init
@@ -520,6 +520,15 @@ List all files currently tracked (read or written) in the active session. Useful
 ```
 
 ---
+
+### /budget
+
+Shows the current session's token budget (USD). Sets the runtime budget with `/budget <value>`. Clamps to a hard limit of `MAX_TOKENS_HARD_LIMIT` (65,536). Returns a `ConfigChangeMessage` for immediate TUI reflection.
+
+```
+/budget
+/budget 0.50
+```
 
 ### /context
 
