@@ -2314,6 +2314,8 @@ mod tests {
             agent_definition: None,
             model_registry: None,
             managed_agents: None,
+            framework_identity: String::new(),
+            periodic_nudge_files: Vec::new(),
             coordinator_mode: false,
         }
     }

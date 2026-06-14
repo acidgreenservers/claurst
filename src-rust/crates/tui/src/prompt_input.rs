@@ -3638,14 +3638,14 @@ mod tests {
     }
 
     #[test]
-    fn motion_W_B_basic() {
+    fn motion_w_b_basic() {
         // "foo.bar baz"  W from 0 → 8 ('b' of 'baz')
         assert_eq!(motion_W("foo.bar baz", 0), 8);
         assert_eq!(motion_B("foo.bar baz", 8), 0);
     }
 
     #[test]
-    fn motion_E_basic() {
+    fn motion_e_basic() {
         assert_eq!(motion_E("foo.bar baz", 0), 6); // end of 'foo.bar' WORD
     }
 
@@ -3656,7 +3656,7 @@ mod tests {
     }
 
     #[test]
-    fn motion_G_basic() {
+    fn motion_g_basic() {
         assert_eq!(motion_G("foo\nbar"), 4);
         assert_eq!(motion_G("single line"), 0);
     }
@@ -3683,7 +3683,7 @@ mod tests {
     }
 
     #[test]
-    fn motion_find_char_bigF() {
+    fn motion_find_char_big_f() {
         // F: search backward
         assert_eq!(motion_find_char("hello", 4, 'h', VimFindKind::BigF, 1), Some(0));
     }
@@ -3703,7 +3703,7 @@ mod tests {
     }
 
     #[test]
-    fn vim_key_W_motion() {
+    fn vim_key_w_motion() {
         let mut mode = VimMode::Normal;
         let mut text = "foo.bar baz".to_string();
         let mut cursor = 0usize;
@@ -3715,7 +3715,7 @@ mod tests {
     }
 
     #[test]
-    fn vim_key_G_last_line() {
+    fn vim_key_g_last_line() {
         let mut mode = VimMode::Normal;
         let mut text = "first\nsecond\nthird".to_string();
         let mut cursor = 0usize;
@@ -3844,7 +3844,7 @@ mod tests {
     }
 
     #[test]
-    fn vim_key_X_delete_before_cursor() {
+    fn vim_key_x_delete_before_cursor() {
         let mut mode = VimMode::Normal;
         let mut text = "hello".to_string();
         let mut cursor = 4usize;
@@ -3883,7 +3883,7 @@ mod tests {
     }
 
     #[test]
-    fn vim_key_D_delete_to_eol() {
+    fn vim_key_d_delete_to_eol() {
         let mut mode = VimMode::Normal;
         let mut text = "hello world".to_string();
         let mut cursor = 6usize;
@@ -4320,7 +4320,7 @@ mod tests {
     }
 
     #[test]
-    fn search_N_finds_prev() {
+    fn search_n_finds_prev() {
         let mut s = PromptInputState::new();
         s.vim_mode = VimMode::Normal;
         s.text = "aa bb aa".to_string();

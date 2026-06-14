@@ -1228,7 +1228,7 @@ mod tests {
 
     #[test]
     fn test_branch_create_no_session_returns_error() {
-        let ctx = make_ctx(); // session_id = "named-test-session" — no saved session
+        let _ctx = make_ctx(); // session_id = "named-test-session" — no saved session
         let cmd = BranchCommand;
         // Calling create on a session that isn't "pre-session" but also doesn't exist
         // on disk: we can't call block_in_place outside a tokio runtime in a sync test,

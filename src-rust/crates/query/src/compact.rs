@@ -1190,7 +1190,7 @@ pub fn collapse_search_results(messages: Vec<claurst_core::types::Message>) -> V
 #[cfg(test)]
 mod tests {
     use super::*;
-    use claurst_core::types::{Message, Role};
+    use claurst_core::types::Message;
 
     fn make_user(text: &str) -> Message {
         Message::user(text)
