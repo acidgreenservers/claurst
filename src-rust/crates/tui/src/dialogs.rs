@@ -15,8 +15,10 @@ use ratatui::Frame;
 /// Distinguishes what kind of action the permission dialog is for.
 /// This drives how many options are shown and what the command block looks like.
 #[derive(Debug, Clone, PartialEq)]
+#[derive(Default)]
 pub enum PermissionDialogKind {
     /// Generic four-option dialog (the previous default).
+    #[default]
     Generic,
     /// Bash command execution — optionally carries a suggested prefix for a
     /// 5th "allow prefix*" option.
@@ -32,11 +34,6 @@ pub enum PermissionDialogKind {
     FileWrite { path: String },
 }
 
-impl Default for PermissionDialogKind {
-    fn default() -> Self {
-        PermissionDialogKind::Generic
-    }
-}
 
 // ---------------------------------------------------------------------------
 // Permission dialog types

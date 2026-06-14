@@ -6,7 +6,7 @@ use claurst_core::{
     file_history::FileHistory,
     message_utils::{estimate_tokens, get_message_text, is_tool_use_message},
     prompt_history::HistoryEntry,
-    session_storage::{transcript_dir, TranscriptEntry},
+    session_storage::transcript_dir,
     types::{Message, MessageContent, Role},
 };
 use std::path::PathBuf;

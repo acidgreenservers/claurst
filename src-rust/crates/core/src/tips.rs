@@ -304,6 +304,7 @@ pub fn select_tip(session_num: u64) -> Option<&'static Tip> {
     }
 
     // Sort by least recently shown (highest `sessions_since` first).
+    #[allow(clippy::unnecessary_sort_by)]
     candidates.sort_by(|a, b| b.1.cmp(&a.1));
     Some(candidates[0].0)
 }

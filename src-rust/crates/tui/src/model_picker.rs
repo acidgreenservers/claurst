@@ -21,8 +21,10 @@ use crate::overlays::{centered_rect, modal_search_line, CLAURST_PANEL_BG};
 /// is silently ignored.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "lowercase")]
+#[derive(Default)]
 pub enum EffortLevel {
     Low,
+    #[default]
     Normal,
     High,
     Max,
@@ -93,11 +95,6 @@ impl EffortLevel {
     }
 }
 
-impl Default for EffortLevel {
-    fn default() -> Self {
-        Self::Normal
-    }
-}
 
 // ---------------------------------------------------------------------------
 // Model capability helpers
@@ -137,7 +134,7 @@ pub fn model_family_description(id: &str) -> String {
 /// Format context window tokens for display in the model picker.
 pub fn format_context_window(context_window: u32) -> String {
     if context_window >= 1_000_000 {
-        if context_window % 1_000_000 == 0 {
+        if context_window.is_multiple_of(1_000_000) {
             format!("{}M context", context_window / 1_000_000)
         } else {
             format!("{:.1}M context", context_window as f64 / 1_000_000.0)

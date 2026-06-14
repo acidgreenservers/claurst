@@ -493,7 +493,7 @@ impl ProviderRegistry {
         // env vars.
         let auth_store = claurst_core::AuthStore::load();
 
-        for (provider_id, _cred) in &auth_store.credentials {
+        for provider_id in auth_store.credentials.keys() {
             let pid = claurst_core::ProviderId::new(provider_id.as_str());
             // Skip if already registered from env vars.
             if registry.get(&pid).is_some() {

@@ -30,7 +30,7 @@ pub fn generate_code_verifier() -> String {
     let u3 = uuid::Uuid::new_v4();
     bytes[32..48].copy_from_slice(&u3.as_bytes()[..16]);
 
-    URL_SAFE_NO_PAD.encode(&bytes)
+    URL_SAFE_NO_PAD.encode(bytes)
 }
 
 /// Compute PKCE code challenge (SHA-256 of verifier, base64url encoded).

@@ -1322,7 +1322,7 @@ impl McpManager {
 
         // Spawn a task for each client to handle notifications via the stream
         for client in clients.values() {
-            let client_clone = Arc::clone(&client);
+            let client_clone = Arc::clone(client);
             let manager_weak = Arc::downgrade(&self);
 
             tokio::spawn(async move {

@@ -737,7 +737,7 @@ async fn main() -> anyhow::Result<()> {
     // but we guard with a std::sync::OnceLock internally).
     {
         static SWARM_INIT: std::sync::OnceLock<()> = std::sync::OnceLock::new();
-        SWARM_INIT.get_or_init(|| claurst_query::init_team_swarm_runner());
+        SWARM_INIT.get_or_init(claurst_query::init_team_swarm_runner);
     }
 
     // Build the full tool list: built-ins from cc-tools plus AgentTool from cc-query
@@ -1008,14 +1008,14 @@ async fn run_models_command(args: &[String]) -> anyhow::Result<()> {
     // Stable order: provider id, then by descending release_date so newest
     // models appear first.
     entries.sort_by(|a, b| {
-        (&*a.info.provider_id)
+        (*a.info.provider_id)
             .cmp(&*b.info.provider_id)
             .then_with(|| {
                 let rd_a = a.release_date.as_deref().unwrap_or("");
                 let rd_b = b.release_date.as_deref().unwrap_or("");
                 rd_b.cmp(rd_a)
             })
-            .then_with(|| (&*a.info.id).cmp(&*b.info.id))
+            .then_with(|| (*a.info.id).cmp(&*b.info.id))
     });
 
     if as_json {
@@ -2887,14 +2887,8 @@ async fn run_interactive(
                                             }
                                             Some('p') => {
                                                 let mut settings =
-                                                    match claurst_core::config::Settings::load_sync(
-                                                    ) {
-                                                        Ok(s) => s,
-                                                        Err(_) => {
-                                                            claurst_core::config::Settings::default(
-                                                            )
-                                                        }
-                                                    };
+                                                    claurst_core::config::Settings::load_sync(
+                                                    ).unwrap_or_default();
                                                 if let Some(path) = selected_path.as_deref() {
                                                     let pattern = format!("{}*", path);
                                                     let _ = manager.add_persistent_allow_path(
@@ -3272,15 +3266,14 @@ async fn run_interactive(
                                         Ok(msgs) if !msgs.is_empty() => {
                                             for msg in &msgs {
                                                 since_id = Some(msg.id.clone());
-                                                if msg.role == "user" {
-                                                    if poll_tx
+                                                if msg.role == "user"
+                                                    && poll_tx
                                                         .send(msg.content.clone())
                                                         .await
                                                         .is_err()
                                                     {
                                                         return;
                                                     }
-                                                }
                                             }
                                         }
                                         _ => {}

@@ -785,8 +785,10 @@ pub mod config {
     /// Budget allocation strategy between manager and executor agents.
     #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
     #[serde(tag = "type", rename_all = "snake_case")]
+    #[derive(Default)]
     pub enum BudgetSplitPolicy {
         /// Shared pool — no split (default).
+        #[default]
         SharedPool,
         /// Manager gets manager_pct% of total budget.
         Percentage { manager_pct: u8 },
@@ -794,11 +796,7 @@ pub mod config {
         FixedCaps { manager_usd: f64, executor_usd: f64 },
     }
 
-    impl Default for BudgetSplitPolicy {
-        fn default() -> Self {
-            BudgetSplitPolicy::SharedPool
-        }
-    }
+    
 
     /// Configuration for manager-executor agent architecture.
     #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -1206,6 +1204,7 @@ pub mod config {
 
     /// Configuration for a file formatter tool.
     #[derive(Debug, Clone, Serialize, Deserialize)]
+    #[derive(Default)]
     pub struct FormatterConfig {
         /// Command to run, e.g. `["prettier", "--write"]`.
         pub command: Vec<String>,
@@ -1216,15 +1215,7 @@ pub mod config {
         pub disabled: bool,
     }
 
-    impl Default for FormatterConfig {
-        fn default() -> Self {
-            Self {
-                command: Vec::new(),
-                extensions: Vec::new(),
-                disabled: false,
-            }
-        }
-    }
+    
 
     #[derive(Debug, Clone, Serialize, Deserialize, Default)]
     pub struct ProjectSettings {
@@ -1491,11 +1482,7 @@ pub mod config {
                 tokens
             };
 
-            if let Some(cred) = tokens.effective_credential() {
-                Some((cred.to_string(), tokens.uses_bearer_auth()))
-            } else {
-                None
-            }
+            tokens.effective_credential().map(|cred| (cred.to_string(), tokens.uses_bearer_auth()))
         }
 
         pub fn resolve_provider_api_base(&self, provider_id: &str) -> Option<String> {
@@ -3274,22 +3261,19 @@ pub mod history {
         }
 
         let mut sessions = vec![];
-        match tokio::fs::read_dir(&dir).await {
-            Ok(mut entries) => {
-                while let Ok(Some(entry)) = entries.next_entry().await {
-                    let path = entry.path();
-                    if path.extension().and_then(|s| s.to_str()) == Some("json") {
-                        if let Ok(content) = tokio::fs::read_to_string(&path).await {
-                            if let Ok(session) =
-                                serde_json::from_str::<ConversationSession>(&content)
-                            {
-                                sessions.push(session);
-                            }
+        if let Ok(mut entries) = tokio::fs::read_dir(&dir).await {
+            while let Ok(Some(entry)) = entries.next_entry().await {
+                let path = entry.path();
+                if path.extension().and_then(|s| s.to_str()) == Some("json") {
+                    if let Ok(content) = tokio::fs::read_to_string(&path).await {
+                        if let Ok(session) =
+                            serde_json::from_str::<ConversationSession>(&content)
+                        {
+                            sessions.push(session);
                         }
                     }
                 }
             }
-            Err(_) => {}
         }
 
         sessions.sort_by(|a, b| b.updated_at.cmp(&a.updated_at));
@@ -3888,7 +3872,7 @@ pub mod oauth {
 
             let profile = AccountProfile {
                 id: id.clone(),
-                label: label.map(|l| slugify_profile_id(l)),
+                label: label.map(slugify_profile_id),
                 email: self.email.clone(),
                 account_id: self.account_uuid.clone(),
                 organization_uuid: self.organization_uuid.clone(),

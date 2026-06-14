@@ -1632,7 +1632,7 @@ mod tests {
     #[test]
     fn test_jwt_decode_invalid() {
         assert!(JwtClaims::decode("notajwt").is_err());
-        assert!(JwtClaims::decode("only.two").is_ok() == false || true); // either way, must not panic
+        assert!(!JwtClaims::decode("only.two").is_ok() || true); // either way, must not panic
     }
 
     #[test]

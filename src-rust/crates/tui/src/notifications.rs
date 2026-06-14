@@ -74,7 +74,7 @@ impl NotificationQueue {
     pub fn tick(&mut self) {
         let now = Instant::now();
         self.notifications
-            .retain(|n| n.expires_at.map_or(true, |exp| exp > now));
+            .retain(|n| n.expires_at.is_none_or(|exp| exp > now));
     }
 
     /// Return the currently visible (most recent) notification, if any.
@@ -93,7 +93,7 @@ impl NotificationQueue {
 
     pub fn current_is_error(&self) -> bool {
         self.current()
-            .map_or(false, |n| n.kind == NotificationKind::Error)
+            .is_some_and(|n| n.kind == NotificationKind::Error)
     }
 
     /// Return `true` if there are no active notifications.

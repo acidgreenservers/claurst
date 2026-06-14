@@ -42,8 +42,7 @@ pub fn parse_skill_file(content: &str, path: &Path) -> Option<DiscoveredSkill> {
         return None;
     }
 
-    let (name, description, template) = if content.starts_with("---") {
-        let after_open = &content[3..];
+    let (name, description, template) = if let Some(after_open) = content.strip_prefix("---") {
         // Accept both `\n---` and `\r\n---` as closing delimiter.
         if let Some(close_pos) = after_open.find("\n---") {
             let frontmatter = &after_open[..close_pos];
@@ -216,7 +215,7 @@ fn fetch_git_skills(url: &str) -> Option<Vec<DiscoveredSkill>> {
     let cache_dir = dirs::cache_dir()?.join("claurst").join("skills");
 
     // Use the last path segment of the URL as the local directory name.
-    let repo_name = url.split('/').last()?.trim_end_matches(".git");
+    let repo_name = url.split('/').next_back()?.trim_end_matches(".git");
 
     if repo_name.is_empty() {
         tracing::warn!(url, "skill_discovery: cannot derive repo name from git URL");

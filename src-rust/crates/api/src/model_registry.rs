@@ -57,18 +57,15 @@ pub enum Modality {
 /// Model lifecycle status as reported by models.dev.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
+#[derive(Default)]
 pub enum ModelStatus {
+    #[default]
     Active,
     Beta,
     Alpha,
     Deprecated,
 }
 
-impl Default for ModelStatus {
-    fn default() -> Self {
-        ModelStatus::Active
-    }
-}
 
 impl ModelStatus {
     /// Whether to surface this model in default UI listings.
@@ -848,7 +845,7 @@ impl ModelRegistry {
     /// List all known providers (sorted by id for stable output).
     pub fn list_providers(&self) -> Vec<&ProviderEntry> {
         let mut v: Vec<&ProviderEntry> = self.providers.values().collect();
-        v.sort_by(|a, b| (&*a.id).cmp(&*b.id));
+        v.sort_by(|a, b| (*a.id).cmp(&*b.id));
         v
     }
 

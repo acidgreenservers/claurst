@@ -466,7 +466,7 @@ pub fn render_app(frame: &mut Frame, app: &App) {
             // instead of overflowing the input area.  Cap at 3 lines.
             let usable_width = size.width.max(1) as usize;
             let char_count = text.chars().count();
-            ((char_count + usable_width - 1) / usable_width)
+            char_count.div_ceil(usable_width)
                 .max(1)
                 .min(3) as u16
         } else {
@@ -2071,7 +2071,7 @@ fn render_status_row(frame: &mut Frame, app: &App, area: Rect) {
                     && !t.eq_ignore_ascii_case(STATUS_THINKING)
                     && !t.eq_ignore_ascii_case(STATUS_THINKING_ELLIPSIS)
             })
-            .or_else(|| app.spinner_verb.as_deref())
+            .or(app.spinner_verb.as_deref())
             .unwrap_or("Thinking");
 
         let mut s = vec![Span::styled(

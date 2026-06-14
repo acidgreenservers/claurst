@@ -91,7 +91,7 @@ pub fn parse_at_refs(
         }
 
         let size_kb = match fs::metadata(&expanded_path) {
-            Ok(meta) => (meta.len() as usize + 1023) / 1024, // Round up to KB
+            Ok(meta) => (meta.len() as usize).div_ceil(1024), // Round up to KB
             Err(e) => {
                 oversized.push(AtFileRef {
                     token: token.clone(),

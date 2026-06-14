@@ -158,7 +158,7 @@ pub fn copy_as_json(message: &Message) -> String {
         "content": match &message.content {
             claurst_core::MessageContent::Text(text) => text.clone(),
             claurst_core::MessageContent::Blocks(blocks) => {
-                blocks.iter().map(|b| format_block_for_json(b)).collect::<Vec<_>>().join("\n")
+                blocks.iter().map(format_block_for_json).collect::<Vec<_>>().join("\n")
             }
         },
         "uuid": message.uuid,
@@ -216,7 +216,7 @@ fn strip_markdown(text: &str) -> String {
                 // Handle markdown links: [text](url) -> text
                 let mut link_text = String::new();
                 let mut found_close = false;
-                while let Some(ch) = chars.next() {
+                for ch in chars.by_ref() {
                     if ch == ']' {
                         found_close = true;
                         break;
@@ -227,7 +227,7 @@ fn strip_markdown(text: &str) -> String {
                 // Skip URL part
                 if found_close && chars.peek() == Some(&'(') {
                     chars.next(); // consume '('
-                    while let Some(ch) = chars.next() {
+                    for ch in chars.by_ref() {
                         if ch == ')' {
                             break;
                         }
@@ -249,14 +249,14 @@ fn strip_markdown(text: &str) -> String {
                 // Skip markdown image syntax ![alt](url)
                 if chars.peek() == Some(&'[') {
                     chars.next();
-                    while let Some(c) = chars.next() {
+                    for c in chars.by_ref() {
                         if c == ']' {
                             break;
                         }
                     }
                     if chars.peek() == Some(&'(') {
                         chars.next();
-                        while let Some(c) = chars.next() {
+                        for c in chars.by_ref() {
                             if c == ')' {
                                 break;
                             }
@@ -287,9 +287,9 @@ fn extract_code_blocks_from_text(text: &str, blocks: &mut Vec<String>) {
     let mut in_block = false;
     let mut current_block = String::new();
     let mut language = String::new();
-    let mut lines = text.lines().peekable();
+    let lines = text.lines().peekable();
 
-    while let Some(line) = lines.next() {
+    for line in lines {
         if line.starts_with("```") {
             if in_block {
                 // End of code block

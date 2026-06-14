@@ -70,8 +70,7 @@ pub fn render_markdown(text: &str, width: u16) -> Vec<Line<'static>> {
             continue;
         }
 
-        if raw.starts_with("> ") {
-            let quoted = &raw[2..];
+        if let Some(quoted) = raw.strip_prefix("> ") {
             lines.push(Line::from(vec![
                 Span::styled(
                     format!("  {} ", figures::BLOCKQUOTE_BAR),

@@ -115,11 +115,10 @@ impl ShadowSnapshot {
             warn!("snapshot: cannot create gitdir: {e}");
             return None;
         }
-        if !existed {
-            if !self.init_shadow().await {
+        if !existed
+            && !self.init_shadow().await {
                 return None;
             }
-        }
         self.stage().await;
         let r = self.shadow(vec!["write-tree"]).await;
         if r.code != 0 {
@@ -219,7 +218,7 @@ impl ShadowSnapshot {
                 }
                 let rel = abs
                     .strip_prefix(&self.worktree)
-                    .map(|p| fwd_str(p))
+                    .map(fwd_str)
                     .unwrap_or_else(|_| fwd_str(abs));
                 ops.push(Op {
                     hash: patch.hash.clone(),

@@ -85,7 +85,7 @@ pub async fn prefetch_skills(project_root: &Path, index: SharedSkillIndex) {
         if let Ok(entries) = std::fs::read_dir(dir) {
             for entry in entries.flatten() {
                 let path = entry.path();
-                if path.extension().map_or(false, |e| e == "md") {
+                if path.extension().is_some_and(|e| e == "md") {
                     if let Some(skill) = load_skill_from_file(&path) {
                         local.insert(skill);
                     }
@@ -104,7 +104,7 @@ pub async fn prefetch_skills(project_root: &Path, index: SharedSkillIndex) {
         if let Ok(entries) = std::fs::read_dir(&bundled) {
             for entry in entries.flatten() {
                 let path = entry.path();
-                if path.extension().map_or(false, |e| e == "md") {
+                if path.extension().is_some_and(|e| e == "md") {
                     if let Some(mut skill) = load_skill_from_file(&path) {
                         skill.source = "bundled".to_string();
                         local.insert(skill);

@@ -155,7 +155,7 @@ async fn list_skills(dirs: &[PathBuf]) -> ToolResult {
             Ok(mut entries) => {
                 while let Ok(Some(entry)) = entries.next_entry().await {
                     let path = entry.path();
-                    if path.extension().map_or(false, |e| e == "md") {
+                    if path.extension().is_some_and(|e| e == "md") {
                         if let Some(stem) = path.file_stem().and_then(|s| s.to_str()) {
                             let name = stem.to_string();
                             // Deduplicate — project-level shadows user-level;
@@ -223,9 +223,8 @@ async fn read_skill_description(path: &std::path::Path) -> String {
 
 /// Remove YAML frontmatter delimited by `---` at the start of the file.
 fn strip_frontmatter(content: &str) -> String {
-    if content.starts_with("---") {
+    if let Some(after_open) = content.strip_prefix("---") {
         // Find closing ---
-        let after_open = &content[3..];
         if let Some(close_pos) = after_open.find("\n---") {
             // Skip past the closing delimiter and any leading newline
             let rest = &after_open[close_pos + 4..];

@@ -732,6 +732,12 @@ pub struct GoToLineDialog {
     pub total_lines: usize,
 }
 
+impl Default for GoToLineDialog {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl GoToLineDialog {
     pub fn new() -> Self {
         Self {
@@ -802,6 +808,12 @@ pub struct HistorySearch {
     pub matches: Vec<usize>,
     /// Which match is currently highlighted.
     pub selected: usize,
+}
+
+impl Default for HistorySearch {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl HistorySearch {
@@ -4752,7 +4764,7 @@ impl App {
                         .prompt_input
                         .suggestions
                         .get(self.prompt_input.suggestion_index.unwrap())
-                        .map_or(false, |s| {
+                        .is_some_and(|s| {
                             s.source == crate::prompt_input::TypeaheadSource::FileRef
                         });
                     self.prompt_input.accept_suggestion();
@@ -4927,11 +4939,10 @@ impl App {
                 self.pending_mcp_reconnect = true;
                 self.status_message = Some("Reconnecting MCP runtime...".to_string());
             }
-            KeyCode::Char(c) if key.modifiers.is_empty() => {
-                if self.mcp_view.active_pane != crate::mcp_view::McpViewPane::ServerList {
+            KeyCode::Char(c) if key.modifiers.is_empty()
+                && self.mcp_view.active_pane != crate::mcp_view::McpViewPane::ServerList => {
                     self.mcp_view.push_search_char(c);
                 }
-            }
             _ => {}
         }
         false
@@ -4998,11 +5009,10 @@ impl App {
             }
             KeyCode::PageUp => self.diff_viewer.scroll_detail_up(),
             KeyCode::PageDown => self.diff_viewer.scroll_detail_down(),
-            KeyCode::Char(' ') => {
-                if self.diff_viewer.active_pane == DiffPane::FileList {
+            KeyCode::Char(' ')
+                if self.diff_viewer.active_pane == DiffPane::FileList => {
                     self.diff_viewer.toggle_file_collapse();
                 }
-            }
             _ => {}
         }
     }
@@ -5634,7 +5644,6 @@ impl App {
                         // If this is the prefix-allow option ('P'), record the prefix.
                         self.maybe_record_bash_prefix();
                         self.permission_request = None;
-                        return;
                     }
                 }
             }

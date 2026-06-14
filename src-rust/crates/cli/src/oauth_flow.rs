@@ -99,9 +99,9 @@ pub async fn run_oauth_login_flow_with_label(
     } else {
         oauth::CONSOLE_AUTHORIZE_URL
     };
-    let manual_url = oauth::build_auth_url(&authorize_base, &code_challenge, &state, port, true);
+    let manual_url = oauth::build_auth_url(authorize_base, &code_challenge, &state, port, true);
     let automatic_url =
-        oauth::build_auth_url(&authorize_base, &code_challenge, &state, port, false);
+        oauth::build_auth_url(authorize_base, &code_challenge, &state, port, false);
 
     // 4. Print URL and try to open browser
     println!("\nOpening browser for authentication...");

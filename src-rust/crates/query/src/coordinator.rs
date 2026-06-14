@@ -151,10 +151,10 @@ impl Default for ScratchpadGate {
 ///   full set including Agent/SendMessage/TaskStop).
 /// - `AgentMode::Worker`: COORDINATOR_ONLY_TOOLS are removed.
 /// - `AgentMode::Normal`: no filtering.
-pub fn filter_tools_for_mode<'a>(
-    tools: &'a [Box<dyn claurst_tools::Tool>],
+pub fn filter_tools_for_mode(
+    tools: &[Box<dyn claurst_tools::Tool>],
     mode: AgentMode,
-) -> Vec<&'a Box<dyn claurst_tools::Tool>> {
+) -> Vec<&Box<dyn claurst_tools::Tool>> {
     match mode {
         AgentMode::Coordinator | AgentMode::Normal => tools.iter().collect(),
         AgentMode::Worker => tools

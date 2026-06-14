@@ -2706,8 +2706,8 @@ impl SlashCommand for LoginCommand {
 
     async fn execute(&self, args: &str, _ctx: &mut CommandContext) -> CommandResult {
         let tokens: Vec<&str> = args.split_whitespace().collect();
-        let use_codex = tokens.iter().any(|t| *t == "--codex");
-        let login_with_claude_ai = !tokens.iter().any(|t| *t == "--console");
+        let use_codex = tokens.contains(&"--codex");
+        let login_with_claude_ai = !tokens.contains(&"--console");
         let label = parse_label_arg(&tokens);
 
         let provider = if use_codex {
@@ -2756,8 +2756,8 @@ impl SlashCommand for LogoutCommand {
 
     async fn execute(&self, args: &str, ctx: &mut CommandContext) -> CommandResult {
         let tokens: Vec<&str> = args.split_whitespace().collect();
-        let use_codex = tokens.iter().any(|t| *t == "--codex");
-        let purge_all = tokens.iter().any(|t| *t == "--all");
+        let use_codex = tokens.contains(&"--codex");
+        let purge_all = tokens.contains(&"--all");
 
         if use_codex {
             if purge_all {
@@ -2891,7 +2891,7 @@ impl SlashCommand for SwitchCommand {
 
     async fn execute(&self, args: &str, _ctx: &mut CommandContext) -> CommandResult {
         let tokens: Vec<&str> = args.split_whitespace().collect();
-        let use_codex = tokens.iter().any(|t| *t == "--codex");
+        let use_codex = tokens.contains(&"--codex");
         let provider = if use_codex {
             claurst_core::accounts::PROVIDER_CODEX
         } else {
@@ -3570,16 +3570,11 @@ impl SlashCommand for McpCommand {
         if sub == "status" {
             let mut output = String::from("MCP Server Status\n─────────────────\n");
             for srv in &ctx.config.mcp_servers {
-                let kind = match srv.server_type.as_str() {
-                    "stdio" => "stdio",
-                    "sse" => "sse",
-                    "http" => "http",
-                    other => other,
-                };
+                let kind = srv.server_type.as_str();
                 let endpoint = srv
                     .url
                     .as_deref()
-                    .or_else(|| srv.command.as_deref())
+                    .or(srv.command.as_deref())
                     .unwrap_or("(unknown)");
 
                 // Fetch live status from the manager if available.
@@ -5150,7 +5145,7 @@ impl SlashCommand for SkillsCommand {
             if let Ok(entries) = std::fs::read_dir(dir) {
                 for entry in entries.flatten() {
                     let p = entry.path();
-                    if p.extension().map_or(false, |e| e == "md") {
+                    if p.extension().is_some_and(|e| e == "md") {
                         if let Some(stem) = p.file_stem().and_then(|s| s.to_str()) {
                             let name = stem.to_string();
                             if !found.contains(&name) {
@@ -5178,7 +5173,7 @@ impl SlashCommand for SkillsCommand {
                                     }
                                 }
                             }
-                        } else if p.extension().map_or(false, |e| e == "md") {
+                        } else if p.extension().is_some_and(|e| e == "md") {
                             if let Some(stem) = p.file_stem().and_then(|s| s.to_str()) {
                                 let name = stem.to_string();
                                 if !found.contains(&name) {
@@ -5550,9 +5545,7 @@ impl SlashCommand for EffortCommand {
 
     async fn execute(&self, args: &str, ctx: &mut CommandContext) -> CommandResult {
         match args.trim() {
-            "" => CommandResult::Message(format!(
-                "Current effort: normal\nUse /effort [low|normal|high] to change."
-            )),
+            "" => CommandResult::Message("Current effort: normal\nUse /effort [low|normal|high] to change.".to_string()),
             "low" => {
                 // Low effort: smaller max_tokens
                 ctx.config.max_tokens = Some(4096);
@@ -6158,7 +6151,7 @@ mod chrome_cdp {
     ) -> anyhow::Result<Value> {
         let id = next_id();
         let request = json!({ "id": id, "method": method, "params": params });
-        ws.send(WsMessage::Text(request.to_string().into())).await?;
+        ws.send(WsMessage::Text(request.to_string())).await?;
 
         // Drain messages until we get the one with our id (ignore events).
         loop {
@@ -8967,7 +8960,7 @@ impl SlashCommand for RevertCommand {
             checkpoints
                 .iter()
                 .copied()
-                .find(|m| m.uuid.as_deref().map_or(false, |u| u.starts_with(args)))
+                .find(|m| m.uuid.as_deref().is_some_and(|u| u.starts_with(args)))
         };
 
         let target = match target {

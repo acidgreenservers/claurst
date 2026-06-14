@@ -64,7 +64,7 @@ impl CopilotProvider {
     }
 
     pub fn from_env() -> Option<Self> {
-        std::env::var("GITHUB_TOKEN").ok().map(|t| Self::new(t))
+        std::env::var("GITHUB_TOKEN").ok().map(Self::new)
     }
 
     fn base_url() -> &'static str {

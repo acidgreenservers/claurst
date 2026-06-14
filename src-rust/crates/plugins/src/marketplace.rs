@@ -113,7 +113,7 @@ pub async fn marketplace_install(name_or_url: &str) -> Result<InstalledPlugin, S
         MarketplaceEntry {
             name: name_or_url
                 .split('/')
-                .last()
+                .next_back()
                 .unwrap_or("plugin")
                 .trim_end_matches(".zip")
                 .to_string(),

@@ -65,9 +65,8 @@ fn parse_unified_diff(patch: &str) -> Result<Vec<FilePatch>, String> {
                 file_patches.push(f);
             }
             // Don't extract the path here — we do it from the +++ line.
-        } else if line.starts_with("+++ ") {
+        } else if let Some(raw) = line.strip_prefix("+++ ") {
             // Extract target path, stripping the "b/" prefix if present.
-            let raw = &line[4..];
             let path = raw.trim_start_matches("b/").trim().to_string();
             current_file = Some(FilePatch {
                 path,

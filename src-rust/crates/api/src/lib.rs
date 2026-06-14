@@ -395,18 +395,16 @@ pub mod client {
 
     /// Provider selection for API calls.
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    #[derive(Default)]
     pub enum Provider {
         /// Use Anthropic's API
+        #[default]
         Anthropic,
         /// Use OpenAI Codex via OAuth
         Codex,
     }
 
-    impl Default for Provider {
-        fn default() -> Self {
-            Provider::Anthropic
-        }
-    }
+    
 
     /// Configuration for the HTTP client.
     #[derive(Debug, Clone)]
@@ -1336,6 +1334,12 @@ enum PartialBlock {
         thinking_buf: String,
         signature_buf: String,
     },
+}
+
+impl Default for StreamAccumulator {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl StreamAccumulator {

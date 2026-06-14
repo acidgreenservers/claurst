@@ -1213,9 +1213,7 @@ fn vim_operator(
         "h" => {
             let mut p = *cursor;
             for _ in 0..count.max(1) {
-                if p > 0 {
-                    p -= 1;
-                }
+                p = p.saturating_sub(1);
             }
             p
         }
@@ -2379,7 +2377,7 @@ impl PromptInputState {
         while idx < chars.len() && chars[idx].is_whitespace() {
             idx += 1;
         }
-        self.cursor = self.cursor + char_idx_to_byte(rest, idx);
+        self.cursor += char_idx_to_byte(rest, idx);
     }
 
     /// Alt+D: Delete word after cursor.
@@ -3160,12 +3158,12 @@ impl PromptInputState {
     /// meaning an `@file` reference is actively being typed.
     pub fn has_active_file_ref(&self) -> bool {
         let text = &self.text[..self.cursor];
-        text.rfind('@').map_or(false, |at_idx| {
+        text.rfind('@').is_some_and(|at_idx| {
             at_idx == 0
                 || text[..at_idx]
                     .chars()
                     .last()
-                    .map_or(false, |c| c.is_whitespace())
+                    .is_some_and(|c| c.is_whitespace())
         })
     }
 
@@ -3398,7 +3396,7 @@ impl PromptInputState {
 
     /// Rough token estimate: ~4 chars per token.
     fn update_token_estimate(&mut self) {
-        self.token_estimate = (self.text.len() + 3) / 4;
+        self.token_estimate = self.text.len().div_ceil(4);
     }
 
     pub fn is_empty(&self) -> bool {
@@ -3558,7 +3556,7 @@ pub fn render_prompt_input(
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()
             .as_millis();
-        (ms / 530) % 2 == 0
+        (ms / 530).is_multiple_of(2)
     } else {
         true
     };

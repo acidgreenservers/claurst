@@ -70,7 +70,7 @@ pub fn message_to_cloud(msg: &Message, session_id: &str, msg_id: &str, ts: u64) 
 
     let content: Vec<Value> = content_to_blocks(&msg.content)
         .into_iter()
-        .map(|block| serde_json::to_value(&block).unwrap_or_else(|_| Value::Null))
+        .map(|block| serde_json::to_value(&block).unwrap_or(Value::Null))
         .collect();
 
     CloudMessage {

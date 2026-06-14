@@ -208,11 +208,7 @@ impl<T: VirtualItem> VirtualList<T> {
             }
 
             // Compute the portion of this item that's visible
-            let visible_start = if current_row < self.scroll_offset {
-                self.scroll_offset - current_row
-            } else {
-                0
-            };
+            let visible_start = self.scroll_offset.saturating_sub(current_row);
             let visible_rows = h
                 .saturating_sub(visible_start)
                 .min(area.y + area.height - screen_row);

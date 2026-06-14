@@ -336,7 +336,7 @@ pub fn load_all_memory_files(project_root: &Path) -> (Vec<MemoryFileInfo>, Vec<M
                 .flatten()
                 .filter_map(|e| {
                     let p = e.path();
-                    if p.extension().map_or(false, |x| x == "md") {
+                    if p.extension().is_some_and(|x| x == "md") {
                         Some(p)
                     } else {
                         None

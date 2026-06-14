@@ -843,7 +843,7 @@ fn render_diff_detail(state: &DiffViewerState, area: Rect, buf: &mut Buffer) {
                 '\u{25b2}' // ▲
             } else if row == bar_h - 1 {
                 '\u{25bc}' // ▼
-            } else if row >= thumb_top + 1 && row < thumb_top + thumb_size + 1 {
+            } else if row > thumb_top && row < thumb_top + thumb_size + 1 {
                 '\u{2588}' // █ (thumb)
             } else {
                 '\u{2502}' // │ (track)

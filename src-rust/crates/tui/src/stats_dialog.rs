@@ -132,7 +132,7 @@ fn timestamp_to_date(ts_ms: u64) -> String {
 }
 
 fn is_leap_year(year: u32) -> bool {
-    year % 4 == 0 && (year % 100 != 0 || year % 400 == 0)
+    year.is_multiple_of(4) && (!year.is_multiple_of(100) || year.is_multiple_of(400))
 }
 
 fn day_of_year_to_month_day(doy: u32, leap: bool) -> (u32, u32) {
@@ -715,11 +715,7 @@ fn render_cost_heatmap(data: &AggregatedStats, area: Rect, buf: &mut Buffer) {
     // and place week columns right-to-left from the most-recent week.
     let chunks: Vec<_> = sorted_dates.chunks(7).collect();
     let total_chunks = chunks.len();
-    let start_chunk = if total_chunks > 12 {
-        total_chunks - 12
-    } else {
-        0
-    };
+    let start_chunk = total_chunks.saturating_sub(12);
 
     for (display_col, chunk) in chunks[start_chunk..].iter().enumerate() {
         let x = heatmap_area.x + display_col as u16 * 2;
