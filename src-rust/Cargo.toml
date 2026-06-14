@@ -16,7 +16,7 @@ members = [
 ]
 
 [workspace.package]
-version = "0.1.4"
+version = "0.1.5"
 edition = "2021"
 authors = ["Claurst"]
 license = "GPL-3.0"
@@ -116,3 +116,12 @@ claurst-mcp = { path = "crates/mcp" }
 claurst-bridge = { path = "crates/bridge" }
 claurst-buddy = { path = "crates/buddy" }
 claurst-plugins = { path = "crates/plugins" }
+
+# Shipped binaries statically link two TLS stacks (rustls + BoringSSL),
+# bundled SQLite, syntect, and image codecs — LTO and symbol stripping cut
+# size substantially. Keep the default panic = "unwind": the TUI panic hook
+# relies on unwinding to restore the terminal (raw mode, cursor) on panic.
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = "symbols"

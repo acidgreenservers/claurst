@@ -96,7 +96,7 @@ impl Tool for FileWriteTool {
         let is_new = !existed;
 
         // Write the file
-        if let Err(e) = tokio::fs::write(&path, &params.content).await {
+        if let Err(e) = crate::write_atomic(&path, params.content.as_bytes()).await {
             return ToolResult::error(format!(
                 "Failed to write file {}: {}",
                 path.display(),

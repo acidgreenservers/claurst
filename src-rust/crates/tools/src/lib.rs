@@ -230,6 +230,34 @@ pub fn clear_session_shadow(working_dir: &std::path::Path) {
     claurst_core::snapshot::remove(working_dir);
 }
 
+/// Write `contents` to `path` atomically: write to a temp file in the same
+/// directory, then rename over the destination. A crash or disk-full mid-write
+/// can never leave the destination truncated or half-written.
+pub(crate) async fn write_atomic(
+    path: &std::path::Path,
+    contents: &[u8],
+) -> std::io::Result<()> {
+    let file_name = path
+        .file_name()
+        .map(|n| n.to_string_lossy().into_owned())
+        .unwrap_or_else(|| "file".to_string());
+    let tmp = path.with_file_name(format!(".{}.claurst-tmp-{}", file_name, std::process::id()));
+
+    tokio::fs::write(&tmp, contents).await?;
+    // Preserve the original file's permissions (e.g. the executable bit on
+    // Unix), which a fresh temp file would otherwise reset.
+    if let Ok(meta) = tokio::fs::metadata(path).await {
+        let _ = tokio::fs::set_permissions(&tmp, meta.permissions()).await;
+    }
+    match tokio::fs::rename(&tmp, path).await {
+        Ok(()) => Ok(()),
+        Err(e) => {
+            let _ = tokio::fs::remove_file(&tmp).await;
+            Err(e)
+        }
+    }
+}
+
 
 /// A cloneable handle for injecting notification messages into the next agent turn.
 /// Used by background tasks with `notify_on_complete` to signal completion without polling.

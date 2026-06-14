@@ -40,23 +40,48 @@ impl AuthStore {
     pub fn load() -> Self {
         let path = Self::path();
         if path.exists() {
-            std::fs::read_to_string(&path)
-                .ok()
-                .and_then(|s| serde_json::from_str(&s).ok())
-                .unwrap_or_default()
+            match std::fs::read_to_string(&path) {
+                Ok(s) => match serde_json::from_str(&s) {
+                    Ok(store) => store,
+                    Err(e) => {
+                        tracing::warn!(
+                            "auth store at {} is corrupt ({}); starting with an empty store. \
+                             The corrupt file is left in place until the next save.",
+                            path.display(),
+                            e
+                        );
+                        Self::default()
+                    }
+                },
+                Err(e) => {
+                    tracing::warn!("failed to read auth store at {}: {}", path.display(), e);
+                    Self::default()
+                }
+            }
         } else {
             Self::default()
         }
     }
 
     /// Persist the store to disk (best-effort).
+    ///
+    /// Writes to a temp file then renames over the destination so a crash or
+    /// disk-full mid-write can never truncate `auth.json` (which would
+    /// silently wipe the user's stored credentials on the next load).
     pub fn save(&self) {
         let path = Self::path();
         if let Some(parent) = path.parent() {
             let _ = std::fs::create_dir_all(parent);
         }
-        if let Ok(json) = serde_json::to_string_pretty(self) {
-            let _ = std::fs::write(&path, json);
+        let json = match serde_json::to_string_pretty(self) {
+            Ok(j) => j,
+            Err(_) => return,
+        };
+        let tmp = path.with_file_name(format!(".auth.json.claurst-tmp-{}", std::process::id()));
+        if std::fs::write(&tmp, &json).is_ok() {
+            if std::fs::rename(&tmp, &path).is_err() {
+                let _ = std::fs::remove_file(&tmp);
+            }
         }
     }
 

@@ -6,7 +6,7 @@
 
 <p>
     <a href="https://github.com/kuberwastaken/claurst"><img src="https://img.shields.io/badge/Built_with-Rust-CE4D2B?style=for-the-badge&logo=rust&logoColor=white" alt="Built with Rust"></a>
-    <a href="https://github.com/kuberwastaken/claurst"><img src="https://img.shields.io/badge/Version-0.1.4-2E8B57?style=for-the-badge" alt="Version 0.1.4"></a>
+    <a href="https://github.com/kuberwastaken/claurst"><img src="https://img.shields.io/badge/Version-0.1.5-2E8B57?style=for-the-badge" alt="Version 0.1.5"></a>
     <a href="https://github.com/kuberwastaken/claurst/blob/main/LICENSE.md"><img src="https://img.shields.io/badge/License-GPL--3.0-blue?style=for-the-badge" alt="GPL-3.0 License"></a>
 </p>
 
@@ -82,7 +82,7 @@ It's fast, it's memory-efficient, it's yours to run however you want, and there'
 ---
 
 > [!IMPORTANT]
-> **Claurst Cortex** is now officially in Beta (v0.1.4). The core agent, multi-provider routing, and TUI are stable enough for daily driving — expect rough edges around experimental features (flagged below). Bug reports and PRs welcome.
+> **Claurst Cortex** is now officially in Beta (v0.1.5). The core agent, multi-provider routing, and TUI are stable enough for daily driving — expect rough edges around experimental features (flagged below). Bug reports and PRs welcome.
 >
 > **The Claurst Cortex with the Gephyros Architecture embedded is in Alpha (v0.1.2).** The cortex version is retained within the actual cortex so all files remain compatible with the upstream Claurst cortex. The Gephyros Architecture is mostly system prompt changes, cascade updates, and delivery timing alignment. We will explicitly communicate if/when the cortex decides to start taking routes different enough to justify changing the compatibility with the upstream.
 

@@ -165,6 +165,8 @@ async fn run_in_background(
         let result = tokio::time::timeout(
             Duration::from_millis(timeout_ms),
             async {
+                // kill_on_drop: when the timeout drops this future, the child
+                // process must die with it — otherwise it leaks as a zombie.
                 let child = if cfg!(windows) {
                     Command::new("cmd")
                         .arg("/C")
@@ -173,6 +175,7 @@ async fn run_in_background(
                         .stdout(Stdio::piped())
                         .stderr(Stdio::piped())
                         .stdin(Stdio::null())
+                        .kill_on_drop(true)
                         .spawn()
                 } else {
                     Command::new("bash")
@@ -182,6 +185,7 @@ async fn run_in_background(
                         .stdout(Stdio::piped())
                         .stderr(Stdio::piped())
                         .stdin(Stdio::null())
+                        .kill_on_drop(true)
                         .spawn()
                 };
 

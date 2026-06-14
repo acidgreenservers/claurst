@@ -132,7 +132,7 @@ impl Tool for FileEditTool {
         };
 
         // Write back
-        if let Err(e) = tokio::fs::write(&path, &new_content).await {
+        if let Err(e) = crate::write_atomic(&path, new_content.as_bytes()).await {
             return ToolResult::error(format!("Failed to write file {}: {}", path.display(), e));
         }
 

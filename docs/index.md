@@ -8,7 +8,7 @@ Claurst is a high-performance Rust reimplementation of Claude Code — a termina
 
 The AGENT Framework is a cognition framework for agents that mirrors human cognition, and allows the agent to reason better, and the harness steps out of the way.
 
-**Version:** 0.1.4 (Beta) · **License:** GPL-3.0 · [GitHub](https://github.com/Kuberwastaken/claurst)
+**Version:** 0.1.5 (Beta) · **License:** GPL-3.0 · [GitHub](https://github.com/Kuberwastaken/claurst)
 
 </div>
 
