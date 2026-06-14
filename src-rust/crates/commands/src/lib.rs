@@ -2814,49 +2814,35 @@ impl SlashCommand for NormalCommand {
 #[async_trait]
 impl SlashCommand for InitCommand {
     fn name(&self) -> &str { "init" }
-    fn description(&self) -> &str { "Initialize a new project with STATE.md and ATTRACTOR.md" }
+    fn description(&self) -> &str { "Deep recon scan: map project state and produce ATTRACTOR.md + STATE.md" }
+    fn help(&self) -> &str {
+        "Usage: /init\n\n\
+         Performs a deep recon scan of the project. Reads the project structure,\n\
+         manifest files, source code, and documentation. Then produces:\n\n\
+           ATTRACTOR.md — the immutable semantic seed (purpose, vision, philosophy)\n\
+           STATE.md     — the mutable project state ledger (invariants, architecture, issues)\n\n\
+         The agent uses its own tools to scan and write both files."
+    }
 
-    async fn execute(&self, _args: &str, ctx: &mut CommandContext) -> CommandResult {
-        let state_path = ctx.working_dir.join("STATE.md");
-        let attractor_path = ctx.working_dir.join("ATTRACTOR.md");
-
-        let mut created = Vec::new();
-
-        if !state_path.exists() {
-            let state_content = "# Project State\n\n\
-                ## Current Phase\n\n\
-                Describe the current phase of work here.\n\n\
-                ## Known Issues\n\n\
-                - List any known issues or blockers\n\n\
-                ## Next Steps\n\n\
-                - Outline the next steps for this project\n";
-
-            match tokio::fs::write(&state_path, state_content).await {
-                Ok(()) => created.push(format!("Created STATE.md at {}", state_path.display())),
-                Err(e) => return CommandResult::Error(format!("Failed to create STATE.md: {}", e)),
-            }
-        } else {
-            created.push(format!("STATE.md already exists at {}", state_path.display()));
-        }
-
-        if !attractor_path.exists() {
-            let attractor_content = "# Semantic Attractor\n\n\
-                ## Identity Statement\n\n\
-                Define the core identity and purpose of this project here.\n\n\
-                ## Design Decisions\n\n\
-                - Record key architectural decisions and their rationale\n\n\
-                ## Invariants\n\n\
-                - List constraints and invariants that should never be broken\n";
-
-            match tokio::fs::write(&attractor_path, attractor_content).await {
-                Ok(()) => created.push(format!("Created ATTRACTOR.md at {}", attractor_path.display())),
-                Err(e) => return CommandResult::Error(format!("Failed to create ATTRACTOR.md: {}", e)),
-            }
-        } else {
-            created.push(format!("ATTRACTOR.md already exists at {}", attractor_path.display()));
-        }
-
-        CommandResult::Message(created.join("\n"))
+    async fn execute(&self, _args: &str, _ctx: &mut CommandContext) -> CommandResult {
+        CommandResult::UserMessage(
+            "Perform a deep recon scan of this project to initialize the framework files.\n\n\
+             **Step 1 — Recon:** Read the project structure (directory listing), the manifest\n\
+             (Cargo.toml, package.json, or equivalent), key source files, entry points,\n\
+             and any existing documentation (README, docs/). Understand the architecture,\n\
+             the technology stack, the data flows, and the invariants.\n\n\
+             **Step 2 — Produce ATTRACTOR.md:** Write the semantic attractor of this project.\n\
+             This is the immutable seed — purpose, vision, philosophy, design principles.\n\
+             No code references, no tables, no syntax. Just the *why* of the project.\n\
+             This file shapes how the agent's identity anchors to the project.\n\n\
+             **Step 3 — Produce STATE.md:** Write the project state ledger. Map the architecture,\n\
+             verified invariants, framework file delivery modes, current topology phase,\n\
+             session intent, known issues, changes made, and next topological moves.\n\
+             This is the mutable *what* — it updates as the project evolves.\n\n\
+             Both files should reflect what you actually found during the scan, not\n\
+             generic placeholders. Be specific and grounded in the codebase reality."
+                .to_string()
+        )
     }
 }
 
