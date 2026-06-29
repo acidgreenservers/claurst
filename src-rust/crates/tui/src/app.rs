@@ -675,6 +675,44 @@ fn key_event_to_keystroke(key: &KeyEvent) -> Option<ParsedKeystroke> {
     })
 }
 
+/// Rewrite a Ctrl-modified keystroke that carries a non-ASCII character to the
+/// Latin letter at the same physical QWERTY position.
+///
+/// A few core shortcuts — most importantly Ctrl+C (interrupt / exit) and Ctrl+D
+/// (exit) — are matched directly against `KeyEvent::code` in `handle_key_event`
+/// rather than going through the keybinding table (they are intentionally absent
+/// from `default_bindings`, see `NON_REBINDABLE`). On a non-Latin layout
+/// (Ukrainian / Russian JCUKEN, …) the reported character is the Cyrillic glyph
+/// at that physical key — e.g. Ctrl+С arrives as `Char('с')` — so the literal
+/// `KeyCode::Char('c')` arms never fire and the shortcut is dead.
+///
+/// Normalizing once at the top of `handle_key_event` lets every downstream
+/// `key.code` comparison (and the keybinding layer, idempotently) see the Latin
+/// letter, mirroring what `key_event_to_keystroke` already does for bound keys.
+///
+/// Restricted to **pure Ctrl (Ctrl without Alt)** on purpose: Ctrl+<letter>
+/// never produces literal text, so rewriting it cannot corrupt text entry,
+/// whereas Alt / AltGr (reported as Ctrl+Alt) is used to compose characters on
+/// some layouts and must be left untouched. Characters with no known
+/// position mapping (or that map to a non-ASCII result) are returned unchanged.
+fn normalize_layout_shortcut_key(key: KeyEvent) -> KeyEvent {
+    if let KeyCode::Char(c) = key.code {
+        let ctrl = key.modifiers.contains(KeyModifiers::CONTROL);
+        let alt = key.modifiers.contains(KeyModifiers::ALT);
+        if ctrl && !alt && !c.is_ascii() {
+            if let Some(latin) = layout_to_latin(c).chars().next() {
+                if latin.is_ascii() {
+                    return KeyEvent {
+                        code: KeyCode::Char(latin),
+                        ..key
+                    };
+                }
+            }
+        }
+    }
+    key
+}
+
 // ---------------------------------------------------------------------------
 // Focus target
 // ---------------------------------------------------------------------------
@@ -2935,6 +2973,13 @@ impl App {
     /// Process a keyboard event. Returns `true` when the input should be
     /// submitted (Enter pressed with no blocking dialog).
     pub fn handle_key_event(&mut self, key: KeyEvent) -> bool {
+        // Make Ctrl shortcuts layout-independent before any handler runs: on
+        // non-Latin layouts (Ukrainian / Russian, …) a Ctrl combo reports the
+        // Cyrillic glyph at the physical key, which would otherwise miss the
+        // literal `KeyCode::Char(..)` arms below — including Ctrl+C / Ctrl+D,
+        // which are matched here rather than via the keybinding table (issue #47).
+        let key = normalize_layout_shortcut_key(key);
+
         // Dismiss error modal with Esc
         if key.code == KeyCode::Esc && self.notifications.current_is_error() {
             self.dismiss_error_notifications();
@@ -6948,5 +6993,195 @@ mod tests {
 
         assert!(app.permission_request.is_none());
         assert!(!app.bash_command_allowed_by_prefix("npm test"));
+    }
+
+    // ---- issue #47: shortcuts on non-English (Cyrillic) keyboard layouts ----
+
+    #[test]
+    fn test_layout_to_latin_maps_cyrillic_shortcut_positions() {
+        // Letters used by core Ctrl/Alt shortcuts must resolve to the Latin key
+        // at the same physical QWERTY position on the Russian/Ukrainian JCUKEN
+        // layout. (left = Cyrillic glyph reported by the terminal, right = Latin)
+        assert_eq!(layout_to_latin('с'), "c"); // Ctrl+C  (interrupt / exit)
+        assert_eq!(layout_to_latin('в'), "d"); // Ctrl+D  (exit)
+        assert_eq!(layout_to_latin('к'), "r"); // Ctrl+R  (history search)
+        assert_eq!(layout_to_latin('и'), "b"); // Ctrl+B  (create branch)
+        assert_eq!(layout_to_latin('з'), "p"); // Ctrl+P  (global search)
+        assert_eq!(layout_to_latin('е'), "t"); // Ctrl+T  (tasks overlay)
+        assert_eq!(layout_to_latin('т'), "n"); // n
+        assert_eq!(layout_to_latin('о'), "j"); // Ctrl+J  (newline fallback)
+        assert_eq!(layout_to_latin('г'), "u"); // Ctrl+U  (kill to start)
+        assert_eq!(layout_to_latin('ц'), "w"); // Ctrl+W  (kill word)
+        assert_eq!(layout_to_latin('л'), "k"); // Ctrl+K  (command palette)
+        assert_eq!(layout_to_latin('а'), "f"); // Alt+F   (word forward)
+        assert_eq!(layout_to_latin('н'), "y"); // Ctrl+Y  (yank)
+    }
+
+    #[test]
+    fn test_layout_to_latin_covers_full_qwerty_letter_row() {
+        // Every Latin letter position should be reachable from some Cyrillic key,
+        // so every Ctrl/Alt+<letter> binding works regardless of layout.
+        let cyrillic = "йцукенгшщзфывапролдячсмить";
+        let mut latin: Vec<char> = cyrillic
+            .chars()
+            .filter_map(|c| layout_to_latin(c).chars().next())
+            .filter(|c| c.is_ascii_alphabetic())
+            .collect();
+        latin.sort_unstable();
+        latin.dedup();
+        assert_eq!(latin.len(), 26, "all 26 Latin letters must be covered");
+    }
+
+    #[test]
+    fn test_layout_to_latin_uppercase_cyrillic_folds_to_lowercase_latin() {
+        // Shift+Ctrl on a Cyrillic layout reports the uppercase glyph.
+        assert_eq!(layout_to_latin('С'), "c");
+        assert_eq!(layout_to_latin('В'), "d");
+    }
+
+    #[test]
+    fn test_layout_to_latin_passes_through_unknown_chars() {
+        // Plain ASCII and unmapped characters are returned unchanged (lowercased).
+        assert_eq!(layout_to_latin('c'), "c");
+        assert_eq!(layout_to_latin('A'), "a");
+    }
+
+    #[test]
+    fn test_key_event_to_keystroke_maps_ctrl_cyrillic_to_latin() {
+        // Ctrl+С (Cyrillic) on a non-Latin layout must resolve to the Latin "c".
+        let ks = key_event_to_keystroke(&press_key(
+            KeyCode::Char('с'),
+            KeyModifiers::CONTROL,
+        ))
+        .expect("keystroke");
+        assert_eq!(ks.key, "c");
+        assert!(ks.ctrl);
+
+        // Ctrl+О (Cyrillic, the physical J key) → "j" so Ctrl+J newline works.
+        let ks = key_event_to_keystroke(&press_key(
+            KeyCode::Char('о'),
+            KeyModifiers::CONTROL,
+        ))
+        .expect("keystroke");
+        assert_eq!(ks.key, "j");
+    }
+
+    #[test]
+    fn test_key_event_to_keystroke_keeps_plain_cyrillic_for_text_entry() {
+        // Without a modifier the character must NOT be Latinized — it is literal
+        // text the user is typing.
+        let ks = key_event_to_keystroke(&press_key(KeyCode::Char('с'), KeyModifiers::NONE))
+            .expect("keystroke");
+        assert_eq!(ks.key, "с");
+        assert!(!ks.ctrl && !ks.alt);
+    }
+
+    #[test]
+    fn test_normalize_layout_shortcut_key_rewrites_pure_ctrl() {
+        // Pure Ctrl + Cyrillic → Latin letter at the same physical position.
+        let out = normalize_layout_shortcut_key(press_key(
+            KeyCode::Char('с'),
+            KeyModifiers::CONTROL,
+        ));
+        assert_eq!(out.code, KeyCode::Char('c'));
+        assert!(out.modifiers.contains(KeyModifiers::CONTROL));
+    }
+
+    #[test]
+    fn test_normalize_layout_shortcut_key_leaves_plain_and_altgr_untouched() {
+        // No modifier: literal text entry — must stay Cyrillic.
+        let out = normalize_layout_shortcut_key(press_key(KeyCode::Char('с'), KeyModifiers::NONE));
+        assert_eq!(out.code, KeyCode::Char('с'));
+
+        // Ctrl+Alt (AltGr) can compose characters on some layouts — leave it.
+        let out = normalize_layout_shortcut_key(press_key(
+            KeyCode::Char('с'),
+            KeyModifiers::CONTROL | KeyModifiers::ALT,
+        ));
+        assert_eq!(out.code, KeyCode::Char('с'));
+
+        // Plain Alt is also left alone (avoid disturbing Option/meta composition).
+        let out = normalize_layout_shortcut_key(press_key(KeyCode::Char('с'), KeyModifiers::ALT));
+        assert_eq!(out.code, KeyCode::Char('с'));
+    }
+
+    #[test]
+    fn test_normalize_layout_shortcut_key_passes_ascii_through() {
+        // ASCII Ctrl combos (English layout) are unchanged — no regression.
+        let out = normalize_layout_shortcut_key(press_key(KeyCode::Char('c'), KeyModifiers::CONTROL));
+        assert_eq!(out.code, KeyCode::Char('c'));
+    }
+
+    #[test]
+    fn test_ctrl_cyrillic_o_inserts_newline_like_ctrl_j() {
+        // On a Cyrillic layout the physical Ctrl+J key reports Ctrl+О; it must
+        // still insert a newline so multi-line composing works (issue #47).
+        let mut app = make_app();
+        app.prompt_input.text = "ab".to_string();
+        app.prompt_input.cursor = app.prompt_input.text.len();
+        app.refresh_prompt_input();
+
+        app.handle_key_event(press_key(KeyCode::Char('о'), KeyModifiers::CONTROL));
+
+        assert_eq!(app.prompt_input.text, "ab\n");
+    }
+
+    #[test]
+    fn test_ctrl_j_inserts_newline_on_english_layout() {
+        // Regression guard: the English Ctrl+J path still inserts a newline.
+        let mut app = make_app();
+        app.prompt_input.text = "ab".to_string();
+        app.prompt_input.cursor = app.prompt_input.text.len();
+        app.refresh_prompt_input();
+
+        app.handle_key_event(press_key(KeyCode::Char('j'), KeyModifiers::CONTROL));
+
+        assert_eq!(app.prompt_input.text, "ab\n");
+    }
+
+    #[test]
+    fn test_raw_newline_char_inserts_newline() {
+        // A bare LF (0x0A) arriving as Char('\n') — e.g. Shift+Enter on a
+        // terminal without the kitty protocol — must add a newline, not be
+        // dropped.
+        let mut app = make_app();
+        app.prompt_input.text = "ab".to_string();
+        app.prompt_input.cursor = app.prompt_input.text.len();
+        app.refresh_prompt_input();
+
+        app.handle_key_event(press_key(KeyCode::Char('\n'), KeyModifiers::NONE));
+
+        assert_eq!(app.prompt_input.text, "ab\n");
+    }
+
+    #[test]
+    fn test_ctrl_cyrillic_c_triggers_exit_confirmation_on_cyrillic_layout() {
+        // Ctrl+С (Cyrillic) on an empty prompt must arm the two-press exit
+        // confirmation exactly like the English Ctrl+C (issue #47 — "Ctrl combos
+        // don't work").
+        let mut app = make_app();
+        assert!(app.prompt_input.is_empty());
+
+        app.handle_key_event(press_key(KeyCode::Char('с'), KeyModifiers::CONTROL));
+        assert!(
+            app.last_exit_key_warning.is_some(),
+            "first Ctrl+С should arm the exit confirmation"
+        );
+        assert!(!app.should_exit);
+
+        // Second press within the timeout exits.
+        app.handle_key_event(press_key(KeyCode::Char('с'), KeyModifiers::CONTROL));
+        assert!(app.should_exit, "second Ctrl+С should exit");
+    }
+
+    #[test]
+    fn test_ctrl_c_still_triggers_exit_confirmation_on_english_layout() {
+        // Regression guard: the English Ctrl+C exit confirmation is unchanged.
+        let mut app = make_app();
+        app.handle_key_event(press_key(KeyCode::Char('c'), KeyModifiers::CONTROL));
+        assert!(app.last_exit_key_warning.is_some());
+        assert!(!app.should_exit);
+        app.handle_key_event(press_key(KeyCode::Char('c'), KeyModifiers::CONTROL));
+        assert!(app.should_exit);
     }
 }
