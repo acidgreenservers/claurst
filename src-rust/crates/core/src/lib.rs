@@ -1024,6 +1024,14 @@ pub mod config {
             skip_serializing_if = "Option::is_none"
         )]
         pub request_timeout_secs: Option<u64>,
+        /// Whether app-level mouse capture is enabled. `None` (default) or
+        /// `Some(true)` means claurst captures the mouse for scroll / right-click
+        /// context menu / middle-click paste / drag text-selection. Set
+        /// `"mouseCapture": false` to release the mouse to the terminal so native
+        /// click-drag selection and copy/paste work without lag (issue #104).
+        /// Keyboard scrolling (PageUp/PageDown, etc.) is unaffected either way.
+        #[serde(default, rename = "mouseCapture", skip_serializing_if = "Option::is_none")]
+        pub mouse_capture: Option<bool>,
     }
 
     #[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq, Eq)]
@@ -1262,6 +1270,14 @@ pub mod config {
     }
 
     impl Config {
+        /// Whether app-level mouse capture should be enabled. Defaults to `true`
+        /// (capture on) when unset, preserving historical behaviour; users opt out
+        /// via `"mouseCapture": false` to restore native terminal text selection
+        /// and copy/paste (issue #104).
+        pub fn mouse_capture_enabled(&self) -> bool {
+            self.mouse_capture.unwrap_or(true)
+        }
+
         pub fn selected_provider_id(&self) -> &str {
             self.provider
                 .as_deref()
@@ -1727,6 +1743,7 @@ pub mod config {
                 },
                 managed_agents: over.config.managed_agents.or(base.config.managed_agents),
                 auto_commits: over.config.auto_commits.or(base.config.auto_commits),
+                mouse_capture: over.config.mouse_capture.or(base.config.mouse_capture),
                 cursor_blink_enabled: over.config.cursor_blink_enabled || base.config.cursor_blink_enabled,
                 file_autocomplete_limit: if over.config.file_autocomplete_limit != 0 { over.config.file_autocomplete_limit } else { base.config.file_autocomplete_limit },
                 file_autocomplete_show_hidden_files: over.config.file_autocomplete_show_hidden_files || base.config.file_autocomplete_show_hidden_files,
@@ -4255,6 +4272,44 @@ mod tests {
     }
 
     // ---- Config tests -------------------------------------------------------
+
+    #[test]
+    fn test_config_mouse_capture_defaults_on() {
+        // Unset (None) must read as enabled to preserve historical behaviour.
+        let cfg = crate::config::Config::default();
+        assert_eq!(cfg.mouse_capture, None);
+        assert!(cfg.mouse_capture_enabled());
+    }
+
+    #[test]
+    fn test_config_mouse_capture_explicit_off() {
+        let mut cfg = crate::config::Config::default();
+        cfg.mouse_capture = Some(false);
+        assert!(!cfg.mouse_capture_enabled());
+        cfg.mouse_capture = Some(true);
+        assert!(cfg.mouse_capture_enabled());
+    }
+
+    #[test]
+    fn test_config_mouse_capture_serde_roundtrip() {
+        // Unset round-trips as None and is omitted from the serialized JSON
+        // (skip_serializing_if), so existing settings files stay unchanged.
+        let cfg = crate::config::Config::default();
+        let json = serde_json::to_string(&cfg).unwrap();
+        assert!(!json.contains("mouseCapture"));
+        let back: crate::config::Config = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.mouse_capture, None);
+        assert!(back.mouse_capture_enabled());
+
+        // Explicit off serializes the key and round-trips as disabled.
+        let mut cfg = crate::config::Config::default();
+        cfg.mouse_capture = Some(false);
+        let json = serde_json::to_string(&cfg).unwrap();
+        assert!(json.contains("\"mouseCapture\":false"));
+        let back: crate::config::Config = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.mouse_capture, Some(false));
+        assert!(!back.mouse_capture_enabled());
+    }
 
     #[test]
     fn test_config_effective_model_default() {

@@ -5646,6 +5646,15 @@ impl App {
     pub fn handle_mouse_event(&mut self, mouse_event: MouseEvent) {
         use crossterm::event::MouseButton;
 
+        // When mouse capture is disabled (mouseCapture: false, issue #104) the
+        // terminal keeps the mouse for native click-drag selection / copy-paste,
+        // so the app must not act on any mouse events that still slip through.
+        // Keyboard scrolling (PageUp/PageDown, etc.) is handled elsewhere and is
+        // unaffected by this gate.
+        if !self.config.mouse_capture_enabled() {
+            return;
+        }
+
         // Fast-reject mouse-move events — they flood at 60+ Hz and we don't
         // need hover tracking. Exception: context menu needs hover to update
         // the selected item highlight.
@@ -6522,6 +6531,39 @@ mod tests {
             kind: KeyEventKind::Press,
             state: KeyEventState::NONE,
         }
+    }
+
+    // ---- mouse capture gate (issue #104) ----
+
+    fn scroll_up_event() -> crossterm::event::MouseEvent {
+        crossterm::event::MouseEvent {
+            kind: crossterm::event::MouseEventKind::ScrollUp,
+            column: 0,
+            row: 0,
+            modifiers: KeyModifiers::NONE,
+        }
+    }
+
+    #[test]
+    fn mouse_events_processed_when_capture_enabled() {
+        // Default config leaves mouse capture on, so a scroll wheel event
+        // should move the scroll offset.
+        let mut app = make_app();
+        assert!(app.config.mouse_capture_enabled());
+        assert_eq!(app.scroll_offset, 0);
+        app.handle_mouse_event(scroll_up_event());
+        assert!(app.scroll_offset > 0, "scroll should advance when capture is on");
+    }
+
+    #[test]
+    fn mouse_events_ignored_when_capture_disabled() {
+        // With mouseCapture: false the app must not act on mouse events that
+        // still slip through, so the scroll offset stays put.
+        let mut app = make_app();
+        app.config.mouse_capture = Some(false);
+        assert!(!app.config.mouse_capture_enabled());
+        app.handle_mouse_event(scroll_up_event());
+        assert_eq!(app.scroll_offset, 0, "scroll must not move when capture is off");
     }
 
     // ---- normalize_char_with_shift tests ----

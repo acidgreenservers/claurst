@@ -1702,7 +1702,7 @@ async fn run_interactive(
 
 
     // Set up terminal
-    let mut terminal = setup_terminal()?;
+    let mut terminal = setup_terminal(live_config.mouse_capture_enabled())?;
     let mut app = App::new(live_config.clone(), cost_tracker.clone());
     // Gate input shift-normalization on whether the terminal speaks the kitty
     // keyboard protocol (detected in setup_terminal). On terminals that don't —
@@ -2396,7 +2396,7 @@ async fn run_interactive(
                                             eprintln!("\nLogin failed: {}", e);
                                         }
                                     }
-                                    terminal = claurst_tui::setup_terminal()?;
+                                    terminal = claurst_tui::setup_terminal(app.config.mouse_capture_enabled())?;
                                     app.kitty_keyboard_active =
                                         claurst_tui::keyboard_enhancement_active();
                                 }
@@ -2463,7 +2463,7 @@ async fn run_interactive(
                                             }
                                         }
                                     }
-                                    terminal = claurst_tui::setup_terminal()?;
+                                    terminal = claurst_tui::setup_terminal(app.config.mouse_capture_enabled())?;
                                     app.kitty_keyboard_active =
                                         claurst_tui::keyboard_enhancement_active();
                                 }

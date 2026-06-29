@@ -47,6 +47,13 @@ pub fn keyboard_enhancement_active() -> bool {
     KEYBOARD_ENHANCEMENT_ACTIVE.load(Ordering::Relaxed)
 }
 
+/// Whether app-level mouse capture was enabled during [`setup_terminal`].
+/// Mirrors [`KEYBOARD_ENHANCEMENT_ACTIVE`]: set once at setup from the user's
+/// `mouseCapture` config so the panic hook and restore path know whether to
+/// emit `DisableMouseCapture` (issue #104). Defaults to `true` so a restore
+/// that runs before setup keeps the historical always-disable behaviour.
+static MOUSE_CAPTURE_ACTIVE: AtomicBool = AtomicBool::new(true);
+
 // ---------------------------------------------------------------------------
 // Sub-modules
 // ---------------------------------------------------------------------------
@@ -202,10 +209,13 @@ pub use file_injection_dialog::{FileInjectionDialogState, FileInjectionOutcome, 
 /// Used by both restore_terminal and the panic hook.
 fn restore_terminal_cleanup() -> io::Result<()> {
     #[cfg(not(target_os = "windows"))]
+    if MOUSE_CAPTURE_ACTIVE.load(Ordering::Relaxed) {
+        execute!(io::stdout(), DisableMouseCapture)?;
+    }
+    #[cfg(not(target_os = "windows"))]
     execute!(
         io::stdout(),
         LeaveAlternateScreen,
-        DisableMouseCapture,
         DisableBracketedPaste,
         PopKeyboardEnhancementFlags,
     )?;
@@ -218,7 +228,10 @@ fn restore_terminal_cleanup() -> io::Result<()> {
         // Pop may fail on legacy Windows conhost where the push was a no-op;
         // do it best-effort so cleanup never errors out the process.
         let _ = execute!(io::stdout(), PopKeyboardEnhancementFlags);
-        execute!(io::stdout(), LeaveAlternateScreen, DisableMouseCapture)?;
+        if MOUSE_CAPTURE_ACTIVE.load(Ordering::Relaxed) {
+            let _ = execute!(io::stdout(), DisableMouseCapture);
+        }
+        execute!(io::stdout(), LeaveAlternateScreen)?;
     }
 
     Ok(())
@@ -230,13 +243,16 @@ fn restore_terminal_cleanup() -> io::Result<()> {
 /// panic message.  Without this, any panic in rendering code leaves the
 /// terminal in raw mode with mouse capture enabled — the user sees garbage
 /// input until they run `reset`.
-pub fn setup_terminal() -> io::Result<Terminal<CrosstermBackend<Stdout>>> {
+pub fn setup_terminal(mouse_capture: bool) -> io::Result<Terminal<CrosstermBackend<Stdout>>> {
     // Chain on top of any existing hook (e.g. from a previous call or test harness).
     // Only restore the terminal when the panic originates on the main thread.
     // Tokio worker threads also trigger this process-wide hook (Tokio catches
     // the panic internally but the hook still fires), so without this guard any
     // panicking background task would destroy the live TUI display while the
     // main render loop is still running.
+    // Record whether mouse capture is on so the panic hook / restore path
+    // know whether to emit DisableMouseCapture (issue #104).
+    MOUSE_CAPTURE_ACTIVE.store(mouse_capture, Ordering::Relaxed);
     let main_thread_id = std::thread::current().id();
     let original_hook = std::panic::take_hook();
     std::panic::set_hook(Box::new(move |panic_info| {
@@ -256,13 +272,19 @@ pub fn setup_terminal() -> io::Result<Terminal<CrosstermBackend<Stdout>>> {
     execute!(
         stdout,
         EnterAlternateScreen,
-        EnableMouseCapture,
         EnableBracketedPaste,
         PushKeyboardEnhancementFlags(
             KeyboardEnhancementFlags::DISAMBIGUATE_ESCAPE_CODES
                 | KeyboardEnhancementFlags::REPORT_ALL_KEYS_AS_ESCAPE_CODES,
         ),
     )?;
+    // Mouse capture is opt-out (issue #104): when on, the app handles scroll /
+    // right-click menu / drag-select but the terminal can no longer do native
+    // text selection. Skip it when the user set mouseCapture: false.
+    #[cfg(not(target_os = "windows"))]
+    if mouse_capture {
+        execute!(stdout, EnableMouseCapture)?;
+    }
 
     // On Windows, keyboard enhancement is best-effort: conhost and older
     // terminal builds do not support the kitty keyboard protocol.
@@ -270,7 +292,10 @@ pub fn setup_terminal() -> io::Result<Terminal<CrosstermBackend<Stdout>>> {
     // configurations.  Warn the user when it fails, then continue.
     #[cfg(target_os = "windows")]
     {
-        execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
+        execute!(stdout, EnterAlternateScreen)?;
+        if mouse_capture {
+            execute!(stdout, EnableMouseCapture)?;
+        }
         // Kitty keyboard protocol is unsupported on legacy Windows conhost;
         // best-effort — modern Windows Terminal accepts it, conhost returns
         // "Keyboard progressive enhancement not implemented for the legacy
