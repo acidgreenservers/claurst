@@ -34,6 +34,8 @@ It's fast, it's memory-efficient, it's yours to run however you want, and there'
 > - **Free Mode:** Try out Free in '/connect' to get a great agentic coding experience in Claurst for absolutely free (or as good as free gets you :P). `[EXPERIMENTAL]` 
 >
 > - **/goal support:** Try out `/goal <objective>` to see claurst keep working an objective, spanning multiple turns instead of stopping after one normal turn. `[EXPERIMENTAL]`
+>
+> - **ultracode:** Type **`ultracode`** (or `ultra code`) anywhere in your prompt — the keyword lights up with a purple gradient (claurst's take on Claude Code's `ultrathink`) and that turn switches into a disciplined plan → delegate → integrate → verify workflow that fans bounded packets out across native subagents (`Agent`), swarms (`TeamCreate`), and background tasks (`TaskCreate`). Composes with `/goal` for sustained multi-turn objectives, and is also available as the `/ultracode` skill. `[EXPERIMENTAL]`
 
 ---
 

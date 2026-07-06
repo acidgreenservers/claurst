@@ -15,7 +15,7 @@ This document is the complete reference for every slash command available in Cla
 7. [Memory & Context](#memory--context) — `/memory`, `/usage`, `/cost`, `/stats`, `/status`, `/insights`
 8. [Agents & Tasks](#agents--tasks) — `/agents`, `/tasks`, `/goal`, `/managed-agents`, `/agent`
 9. [Planning & Review](#planning--review) — `/plan`, `/ultraplan`, `/ultrareview`
-10. [MCP & Integrations](#mcp--integrations) — `/mcp`, `/skills`, `/plugin`, `/chrome`
+10. [MCP & Integrations](#mcp--integrations) — `/mcp`, `/skills`, `/ultracode`, `/plugin`, `/chrome`
 11. [Authentication](#authentication) — `/login`, `/logout`, `/accounts`, `/switch`, `/refresh`
 12. [Display & Terminal](#display--terminal) — `/theme`, `/output-style`, `/statusline`, `/vim`, `/terminal-setup`, `/caveman`, `/rocky`, `/normal`, `/mobile`, `/color`, `/stickers`
 13. [Diagnostics & Info](#diagnostics--info) — `/doctor`, `/version`, `/update`
@@ -779,6 +779,32 @@ List and manage skills. Skills are bundled prompt-commands that extend Claurst's
 /skills disable <skill-name>
 /skills reload
 ```
+
+---
+
+### /ultracode (skill + keyword)
+
+Run a disciplined **ultracode** workflow for serious coding tasks. Ultracode is claurst's take on Claude Code's `ultrathink`: a supervised procedure that classifies the task, picks a mode, and — when it genuinely helps — delegates bounded work across claurst's native agent primitives, then integrates and verifies in the parent session.
+
+There are two ways to trigger it:
+
+- **As a keyword.** Type `ultracode` (or `ultra code`) anywhere in a normal prompt. The keyword renders with a purple gradient in the input, and for that turn the agent operates in ultracode mode (the skill's operating procedure is injected as a system-prompt addendum). No keyword means no change to normal prompts.
+- **As a skill.** Run `/ultracode <task>` (alias `/ultra code`) to invoke it explicitly.
+
+```
+/ultracode <task>          — run the given task in ultracode mode
+please ultracode <task>    — same, activated by the inline keyword
+```
+
+**What it does**
+
+1. **Classify** the task by type, risk, blast radius, verification needs, and whether independent packets exist.
+2. **Pick a mode** — *Direct* (small, tightly-coupled work), *Workflow* (multi-phase work executed as isolated passes), or *Delegated* (the default for non-trivial work with independent packets).
+3. **Delegate** in delegated mode using native primitives: `Agent` for bounded subagents (with `isolation: "worktree"` / `run_in_background: true`), `TeamCreate` for parallel swarms, and `TaskCreate` for background tasks. It fans out **2–4** subagents (cap ~5) on non-overlapping packets while the parent keeps the blocking critical path.
+4. **Integrate** every result in the parent, checking claimed edits against the files and rejecting evidence-free outputs.
+5. **Verify** with checks scaled to risk (targeted tests → lint/typecheck → build → smoke → independent review), reporting any skipped checks honestly.
+
+**Composes with `/goal`.** Ultracode governs *how* a turn plans, delegates, integrates, and verifies; `/goal <objective>` keeps the work going *across* turns. Combine them for long, autonomous objectives — the goal loop spans turns while ultracode structures each one.
 
 ---
 
