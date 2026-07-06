@@ -2587,6 +2587,14 @@ impl PromptInputState {
         self.visual_anchor = None;
         self.vim_command_buf.clear();
         self.vim_search_buf.clear();
+        // #223: emptying the buffer removes every `[Pasted ~N lines #M]`
+        // placeholder along with it, so the paste bodies stored in
+        // `paste_contents` are now unreachable. Drop them to bound memory —
+        // otherwise every large block ever pasted is retained for the App's
+        // lifetime. `clear()` is the funnel for submit (`take()`), cancel, and
+        // reset, so eviction only ever fires once a placeholder has left the
+        // buffer, never while one is still live (so expansion is never broken).
+        self.paste_contents.clear();
     }
 
     /// Take the current text, clearing the input.
