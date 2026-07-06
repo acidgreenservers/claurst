@@ -197,3 +197,304 @@ fn synth_tool_result(tool_use_id: &str) -> ContentBlock {
         is_error: Some(true),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // ---- helpers ---------------------------------------------------------
+
+    fn tool_use(id: &str) -> ContentBlock {
+        ContentBlock::ToolUse {
+            id: id.to_string(),
+            name: "Read".to_string(),
+            input: serde_json::json!({ "path": "/tmp/x" }),
+        }
+    }
+
+    fn tool_result(id: &str, text: &str) -> ContentBlock {
+        ContentBlock::ToolResult {
+            tool_use_id: id.to_string(),
+            content: ToolResultContent::Text(text.to_string()),
+            is_error: None,
+        }
+    }
+
+    fn text_block(text: &str) -> ContentBlock {
+        ContentBlock::Text {
+            text: text.to_string(),
+        }
+    }
+
+    /// Collect (in order) every tool_use id and every tool_result id in a
+    /// history, so tests can assert exact pairing.
+    fn pairing(messages: &[Message]) -> (Vec<String>, Vec<String>) {
+        let mut uses = Vec::new();
+        let mut results = Vec::new();
+        for m in messages {
+            if let MessageContent::Blocks(blocks) = &m.content {
+                for b in blocks {
+                    match b {
+                        ContentBlock::ToolUse { id, .. } => uses.push(id.clone()),
+                        ContentBlock::ToolResult { tool_use_id, .. } => {
+                            results.push(tool_use_id.clone())
+                        }
+                        _ => {}
+                    }
+                }
+            }
+        }
+        (uses, results)
+    }
+
+    /// Assert the API's core invariant: every tool_use is answered by a
+    /// tool_result in the *immediately following* user message, and every
+    /// tool_result answers a tool_use in the *immediately preceding* assistant
+    /// message. Returns nothing; panics with context on violation.
+    fn assert_balanced(messages: &[Message]) {
+        for (i, m) in messages.iter().enumerate() {
+            let uses = collect_tool_use_ids(m);
+            if m.role == Role::Assistant && !uses.is_empty() {
+                let next = messages
+                    .get(i + 1)
+                    .unwrap_or_else(|| panic!("tool_use at {i} has no following message"));
+                assert_eq!(next.role, Role::User, "tool_use at {i} not followed by user");
+                let answered: Vec<String> = collect_tool_result_ids(next);
+                for id in &uses {
+                    assert!(
+                        answered.contains(id),
+                        "tool_use {id} at msg {i} is unanswered"
+                    );
+                }
+            }
+            if m.role == Role::User {
+                let prev_uses = i
+                    .checked_sub(1)
+                    .map(|p| collect_tool_use_ids(&messages[p]))
+                    .unwrap_or_default();
+                for id in collect_tool_result_ids(m) {
+                    assert!(
+                        prev_uses.contains(&id),
+                        "tool_result {id} at msg {i} has no preceding tool_use"
+                    );
+                }
+            }
+        }
+    }
+
+    fn collect_tool_result_ids(msg: &Message) -> Vec<String> {
+        match &msg.content {
+            MessageContent::Blocks(blocks) => blocks
+                .iter()
+                .filter_map(|b| match b {
+                    ContentBlock::ToolResult { tool_use_id, .. } => Some(tool_use_id.clone()),
+                    _ => None,
+                })
+                .collect(),
+            _ => Vec::new(),
+        }
+    }
+
+    // ---- tests -----------------------------------------------------------
+
+    /// A well-formed history — user task, assistant tool_use, answering user
+    /// tool_result, final assistant text — must pass through UNCHANGED.
+    #[test]
+    fn wellformed_history_unchanged() {
+        let messages = vec![
+            Message::user("do the thing"),
+            Message::assistant_blocks(vec![text_block("calling"), tool_use("t1")]),
+            Message::user_blocks(vec![tool_result("t1", "done")]),
+            Message::assistant("all set"),
+        ];
+
+        let out = sanitize_history(messages.clone());
+
+        assert_eq!(out.len(), messages.len(), "no messages added or dropped");
+        assert_eq!(pairing(&out), (vec!["t1".to_string()], vec!["t1".to_string()]));
+        assert_balanced(&out);
+        // Idempotent: running twice yields the same result.
+        assert_eq!(pairing(&sanitize_history(out.clone())), pairing(&out));
+    }
+
+    /// An orphan tool_result (its originating tool_use was sliced away by a
+    /// compaction cut) must be dropped. This is the `snip_compact` /
+    /// `calculate_messages_to_keep_index` failure mode: the tail begins with a
+    /// user tool_result whose assistant tool_use is gone.
+    #[test]
+    fn orphan_tool_result_is_dropped() {
+        let messages = vec![
+            // Compaction kept messages[0] (system/first) then sliced the tail,
+            // stranding this tool_result whose tool_use no longer exists.
+            Message::user("original task"),
+            Message::user_blocks(vec![tool_result("gone", "orphaned output"), text_block("and more")]),
+            Message::assistant("continuing"),
+        ];
+
+        let out = sanitize_history(messages);
+
+        let (uses, results) = pairing(&out);
+        assert!(uses.is_empty(), "no tool_use present");
+        assert!(results.is_empty(), "orphan tool_result must be dropped");
+        assert_balanced(&out);
+        // The non-tool_result text in that message survives; nothing empty dropped.
+        assert_eq!(out.len(), 3);
+        assert_eq!(out[0].get_text(), Some("original task"));
+    }
+
+    /// A user message that becomes EMPTY after orphan removal (it held only an
+    /// orphan tool_result) is dropped entirely.
+    #[test]
+    fn message_emptied_by_removal_is_dropped() {
+        let messages = vec![
+            Message::user("task"),
+            Message::user_blocks(vec![tool_result("gone", "orphan")]),
+            Message::assistant("ok"),
+        ];
+
+        let out = sanitize_history(messages);
+
+        assert_eq!(out.len(), 2, "the emptied user message is dropped");
+        assert_eq!(out[0].get_text(), Some("task"));
+        assert_eq!(out[1].get_text(), Some("ok"));
+        assert_balanced(&out);
+    }
+
+    /// A dangling tool_use at the END of the history (turn interrupted by a
+    /// max_tokens cut or cancellation before the result was appended) gets a
+    /// SYNTHESIZED placeholder result rather than being dropped.
+    #[test]
+    fn dangling_tool_use_at_end_is_synthesized() {
+        let messages = vec![
+            Message::user("task"),
+            Message::assistant_blocks(vec![tool_use("t1")]),
+        ];
+
+        let out = sanitize_history(messages);
+
+        assert_eq!(out.len(), 3, "a synthesized answering user message is appended");
+        assert_eq!(pairing(&out), (vec!["t1".to_string()], vec!["t1".to_string()]));
+        assert_balanced(&out);
+        // The synthesized result is flagged is_error with the placeholder text.
+        if let MessageContent::Blocks(blocks) = &out[2].content {
+            match &blocks[0] {
+                ContentBlock::ToolResult { content, is_error, .. } => {
+                    assert_eq!(*is_error, Some(true));
+                    match content {
+                        ToolResultContent::Text(t) => assert_eq!(t, UNAVAILABLE_RESULT_MSG),
+                        _ => panic!("expected text content"),
+                    }
+                }
+                other => panic!("expected synthesized tool_result, got {other:?}"),
+            }
+        } else {
+            panic!("expected blocks");
+        }
+    }
+
+    /// Command-queue / pending injection can drop a plain user text message in
+    /// right after an assistant tool_use, before it was answered. The synthesized
+    /// result must be MERGED into that user message (preserving the injected
+    /// text) so we do not create two consecutive user turns.
+    #[test]
+    fn dangling_tool_use_before_injected_user_text_is_merged() {
+        let messages = vec![
+            Message::user("task"),
+            Message::assistant_blocks(vec![tool_use("t1")]),
+            Message::user("newly injected command"),
+        ];
+
+        let out = sanitize_history(messages);
+
+        assert_eq!(out.len(), 3, "no extra turn inserted");
+        assert_eq!(pairing(&out), (vec!["t1".to_string()], vec!["t1".to_string()]));
+        assert_balanced(&out);
+        // The injected text is preserved alongside the synthesized result.
+        if let MessageContent::Blocks(blocks) = &out[2].content {
+            assert!(blocks.iter().any(|b| matches!(
+                b,
+                ContentBlock::Text { text } if text == "newly injected command"
+            )));
+            assert!(blocks
+                .iter()
+                .any(|b| matches!(b, ContentBlock::ToolResult { .. })));
+        } else {
+            panic!("expected user blocks");
+        }
+    }
+
+    /// A partially-answered multi-tool turn: two tool_use blocks but only one
+    /// result survived. The missing one is synthesized; the present one is kept
+    /// untouched. (max_tokens recovery / partial cancellation shape.)
+    #[test]
+    fn partial_multi_tool_turn_synthesizes_only_the_missing() {
+        let messages = vec![
+            Message::user("task"),
+            Message::assistant_blocks(vec![tool_use("t1"), tool_use("t2")]),
+            Message::user_blocks(vec![tool_result("t1", "real output")]),
+        ];
+
+        let out = sanitize_history(messages);
+
+        assert_eq!(pairing(&out).0, vec!["t1".to_string(), "t2".to_string()]);
+        assert_balanced(&out);
+        // t1 keeps its real result; t2 gets the placeholder.
+        if let MessageContent::Blocks(blocks) = &out[2].content {
+            let t1 = blocks.iter().find_map(|b| match b {
+                ContentBlock::ToolResult { tool_use_id, content, .. } if tool_use_id == "t1" => {
+                    Some(content)
+                }
+                _ => None,
+            });
+            match t1 {
+                Some(ToolResultContent::Text(t)) => assert_eq!(t, "real output"),
+                _ => panic!("t1's real result must be preserved"),
+            }
+        } else {
+            panic!("expected blocks");
+        }
+    }
+
+    /// A user message carrying a MIX of a valid result and an orphan result:
+    /// the orphan (not requested by the preceding assistant) is dropped, the
+    /// valid one is kept.
+    #[test]
+    fn mixed_valid_and_orphan_results_in_answer() {
+        let messages = vec![
+            Message::user("task"),
+            Message::assistant_blocks(vec![tool_use("t1")]),
+            Message::user_blocks(vec![
+                tool_result("t1", "good"),
+                tool_result("stale", "orphan from an earlier sliced turn"),
+            ]),
+        ];
+
+        let out = sanitize_history(messages);
+
+        assert_eq!(pairing(&out), (vec!["t1".to_string()], vec!["t1".to_string()]));
+        assert_balanced(&out);
+    }
+
+    /// The system / first message is preserved intact and turns are not
+    /// reordered.
+    #[test]
+    fn first_message_preserved() {
+        let messages = vec![
+            Message::user("FIRST — the task"),
+            Message::assistant_blocks(vec![tool_use("t1")]),
+            Message::user_blocks(vec![tool_result("t1", "done")]),
+        ];
+
+        let out = sanitize_history(messages);
+
+        assert_eq!(out[0].role, Role::User);
+        assert_eq!(out[0].get_text(), Some("FIRST — the task"));
+        assert_balanced(&out);
+    }
+
+    /// An empty history is a no-op.
+    #[test]
+    fn empty_history_is_noop() {
+        assert!(sanitize_history(Vec::new()).is_empty());
+    }
+}
