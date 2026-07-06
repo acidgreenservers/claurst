@@ -134,12 +134,17 @@ impl Tool for BatchEditTool {
                 }
             };
 
-            // Normalize Windows CRLF line endings so matching behavior is stable
-            let content = original.replace("\r\n", "\n");
+            // Detect the current content's dominant line ending BEFORE editing
+            // so it survives the write (#225).  Match on an LF-normalized view
+            // but splice the replacement into the original bytes so untouched
+            // lines keep their exact endings.  `original` here is either the raw
+            // on-disk content or a previous edit's output (both real EOLs).
+            let eol = crate::line_endings::LineEnding::detect(&original);
+            let normalized = original.replace("\r\n", "\n");
             let old_string = edit.old_string.replace("\r\n", "\n");
             let new_string = edit.new_string.replace("\r\n", "\n");
 
-            let count = content.matches(&old_string).count();
+            let count = normalized.matches(&old_string).count();
             if count == 0 {
                 pre_check_errors.push(format!(
                     "Edit {}: old_string not found in {}",
@@ -158,7 +163,13 @@ impl Tool for BatchEditTool {
                 continue;
             }
 
-            let new_content = content.replacen(&old_string, &new_string, 1);
+            let (new_content, _replacements) = crate::line_endings::replace_preserving_eol(
+                &original,
+                &old_string,
+                &new_string,
+                eol,
+                false,
+            );
             prepared.push((path.display().to_string(), original, new_content.clone()));
             // update path_content so future edits see the new content
             path_content.insert(path.display().to_string(), new_content);
