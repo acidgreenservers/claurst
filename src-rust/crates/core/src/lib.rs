@@ -3863,8 +3863,12 @@ pub mod oauth {
             let path = crate::accounts::anthropic_token_path(profile_id);
             if let Some(parent) = path.parent() {
                 tokio::fs::create_dir_all(parent).await?;
+                crate::accounts::set_user_only_dir_perms(parent);
             }
             tokio::fs::write(&path, serde_json::to_string_pretty(self)?).await?;
+            // These are live OAuth access + refresh tokens — never leave them
+            // world/group readable (issue #212).
+            crate::accounts::set_user_only_perms(&path);
             Ok(())
         }
 
