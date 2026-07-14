@@ -166,6 +166,16 @@ pub struct QueryConfig {
     /// goal's guards allow, injecting the goal continuation message as the next
     /// user turn — instead of the CLI REPL re-dispatching a fresh turn.
     pub continuation: crate::continuation::ContinuationMode,
+    /// Framework identity files (session-start only, injected once in cacheable block).
+    /// Contains concatenated content from AGENT.md, AGENTS.md, ATTRACTOR.md, BRAIN.md, HEART.md.
+    pub framework_identity: String,
+    /// Files to periodically nudge the agent to re-read (every N turns).
+    pub periodic_nudge_files: Vec<String>,
+    /// When true, the cacheable system prompt block includes the coordinator-
+    /// mode section, telling the model it's an orchestrator with access to
+    /// the Agent tool for spawning parallel worker sub-agents.
+    /// Set via the CLAURST_COORDINATOR_MODE environment variable.
+    pub coordinator_mode: bool,
 }
 
 impl Default for QueryConfig {
@@ -194,6 +204,9 @@ impl Default for QueryConfig {
             managed_agents: None,
             enabled_tools: None,
             continuation: crate::continuation::ContinuationMode::Default,
+            framework_identity: String::new(),
+            periodic_nudge_files: Vec::new(),
+            coordinator_mode: false,
         }
     }
 }
@@ -675,6 +688,13 @@ pub async fn run_query_loop(
                 }
             }
 
+            // If coordinator mode is active (env var set or session-resume matched),
+            // signal the system prompt to inject the coordinator-mode section.
+            // Tells the model it's an orchestrator that can spawn parallel workers.
+            if crate::coordinator::is_coordinator_mode() {
+                patched.coordinator_mode = true;
+            }
+
             // Apply todo nudge on turns > 2.
             if turn > 2 {
                 let nudge = build_todo_nudge(&tool_ctx.session_id);
@@ -729,6 +749,14 @@ pub async fn run_query_loop(
                 effective_output_style_for_turn(config, messages.as_slice());
             patched.output_style = turn_output_style;
             patched.output_style_prompt = turn_output_style_prompt;
+
+            // Periodic framework nudge every 15 turns.
+            // Mirrors the todo nudge pattern above: clear the file list so
+            // build_periodic_nudge returns None on off-turns.
+            if turn > 0 && turn % 15 != 0 {
+                patched.periodic_nudge_files.clear();
+            }
+
 
             build_system_prompt(&patched)
         };
@@ -2055,6 +2083,38 @@ impl StreamHandler for ChannelStreamHandler {
     }
 }
 
+/// Build the system prompt from config.
+///
+/// Delegates to `claurst_core::system_prompt::build_system_prompt` so that all
+/// default content (capabilities, safety guidelines, dynamic-boundary marker,
+/// etc.) is assembled in one place.  The `QueryConfig` fields map directly to
+/// `SystemPromptOptions`:
+///
+/// - `system_prompt`        → `custom_system_prompt` (added to cacheable block)
+/// - `append_system_prompt` → `append_system_prompt` (added after boundary)
+fn build_system_prompt(config: &QueryConfig) -> SystemPrompt {
+    use claurst_core::system_prompt::SystemPromptOptions;
+
+    let opts = SystemPromptOptions {
+        custom_system_prompt: config.system_prompt.clone(),
+        append_system_prompt: config.append_system_prompt.clone(),
+        output_style: config.output_style,
+        custom_output_style_prompt: config.output_style_prompt.clone(),
+        working_directory: config.working_directory.clone(),
+        framework_identity: config.framework_identity.clone(),
+        periodic_nudge_files: config.periodic_nudge_files.clone(),
+        periodic_nudge: claurst_core::claudemd::build_periodic_nudge(
+            &config.periodic_nudge_files,
+        ),
+        coordinator_mode: config.coordinator_mode,
+        ..Default::default()
+    };
+
+    let text = claurst_core::system_prompt::build_system_prompt(&opts);
+    SystemPrompt::Text(text)
+}
+
+
 // ---------------------------------------------------------------------------
 // Provider stream event mapping
 // ---------------------------------------------------------------------------
@@ -2093,6 +2153,9 @@ mod tests {
             managed_agents: None,
             enabled_tools: None,
             continuation: crate::continuation::ContinuationMode::Default,
+            framework_identity: String::new(),
+            periodic_nudge_files: Vec::new(),
+            coordinator_mode: false,
         }
     }
 

@@ -587,6 +587,18 @@ async fn main() -> anyhow::Result<()> {
     }
     let system_prompt = system_parts.join("\n\n");
 
+    // Load framework files (session-start + every-turn)
+    let (session_start_files, _every_turn_files) =
+        claurst_core::claudemd::load_all_memory_files(&cwd);
+    let framework_identity =
+        claurst_core::claudemd::build_framework_identity(&session_start_files);
+    let periodic_nudge_files: Vec<String> = vec![
+        "AGENT.md".into(),
+        "AGENTS.md".into(),
+        "STATE.md".into(),
+        "ATTRACTOR.md".into(),
+    ];
+
     // Determine mode early (needed for auth error handling and permission handler selection).
     let is_headless = cli.print || cli.prompt.is_some();
 
@@ -818,6 +830,8 @@ async fn main() -> anyhow::Result<()> {
     query_config.system_prompt = Some(system_prompt);
     query_config.append_system_prompt = None;
     query_config.working_directory = Some(cwd.display().to_string());
+    query_config.framework_identity = framework_identity;
+    query_config.periodic_nudge_files = periodic_nudge_files;
     if let Some(tokens) = cli.thinking {
         query_config.thinking_budget = Some(tokens);
     }

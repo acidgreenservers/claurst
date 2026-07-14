@@ -66,7 +66,7 @@ const PROMPT_SLASH_COMMANDS: &[(&str, &str)] = &[
     ("help", "Show help"),
     ("hooks", "Browse configured hooks (read-only)"),
     ("import-config", "Import CLAUDE.md and settings.json from ~/.claude"),
-    ("init", "Initialize AGENTS.md for this project"),
+    ("init", "Initialize STATE.md and ATTRACTOR.md for this project"),
     ("insights", "Generate a session analysis report with conversation statistics"),
     ("keybindings", "Show keybinding configuration"),
     ("links", "Open URLs from this session in your browser"),

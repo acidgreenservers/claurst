@@ -372,6 +372,11 @@ impl Tool for AgentTool {
             // Sub-agents run to their own completion and never drive goal
             // continuation — stop after one turn like every non-goal run.
             continuation: crate::continuation::ContinuationMode::Default,
+            // Harness additions: sub-agents get empty framework identity, no
+            // periodic nudge, and never run in coordinator mode.
+            framework_identity: String::new(),
+            periodic_nudge_files: Vec::new(),
+            coordinator_mode: false,
         };
         // -----------------------------------------------------------------------
         // Background mode: spawn and return agent_id immediately.
@@ -646,6 +651,7 @@ pub fn init_team_swarm_runner() {
                     enabled_tools: Some(
                         agent_tools.iter().map(|t| t.name().to_string()).collect(),
                     ),
+                    coordinator_mode: false,
                     ..Default::default()
                 };
 

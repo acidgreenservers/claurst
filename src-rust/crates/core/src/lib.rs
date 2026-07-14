@@ -2065,7 +2065,7 @@ pub mod constants {
     pub const OPUS_MODEL: &str = "claude-opus-4-6";
 
     // Token limits
-    pub const DEFAULT_MAX_TOKENS: u32 = 32_000;
+    pub const DEFAULT_MAX_TOKENS: u32 = 65_536;
     pub const MAX_TOKENS_HARD_LIMIT: u32 = 65_536;
     pub const DEFAULT_COMPACT_THRESHOLD: f32 = 0.9;
     pub const MAX_TURNS_DEFAULT: u32 = 10;

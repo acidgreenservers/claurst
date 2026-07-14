@@ -10,6 +10,15 @@ refs/
 # Claude
 .claude
 
+# Agents
+.agents/
+
+# Cline
+.clinerules/
+
+# Claurst
+.claurst/
+
 # Git
 .gitignore
 .gitattributes
@@ -17,4 +26,3 @@ refs/
 # VSCode / unsolicited devcontainers mounts
 .vscode/
 .claurst/
-

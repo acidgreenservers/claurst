@@ -287,6 +287,9 @@ pub struct CompactCommand;
 pub struct CostCommand;
 pub struct ExitCommand;
 pub struct ModelCommand;
+pub struct BudgetCommand;
+pub struct ConfigCommand;
+pub struct ColorCommand;
 pub struct VersionCommand;
 pub struct ResumeCommand;
 pub struct StatusCommand;
@@ -791,6 +794,301 @@ impl SlashCommand for ModelCommand {
     }
 }
 
+// ---- /budget -------------------------------------------------------------
+
+#[async_trait]
+impl SlashCommand for BudgetCommand {
+    fn name(&self) -> &str { "budget" }
+    fn description(&self) -> &str { "Show or change the output token budget per response" }
+    fn help(&self) -> &str {
+        "Usage: /budget [<token-count>]\n\n\
+         Without arguments, shows the current output token budget.\n\n\
+         With a number, sets the output token budget for this session.\n\
+         The maximum is 65,536 tokens.\n\n\
+         Examples:\n\
+           /budget            — show current budget\n\
+           /budget 65536      — set to 65k tokens\n\
+           /budget 32000      — set to 32k tokens"
+    }
+
+    async fn execute(&self, args: &str, ctx: &mut CommandContext) -> CommandResult {
+        let args = args.trim();
+        if args.is_empty() {
+            CommandResult::Message(format!(
+                "Current output token budget: {}",
+                ctx.config.effective_max_tokens()
+            ))
+        } else {
+            let tokens: u32 = args.parse().unwrap_or(0);
+            if tokens == 0 {
+                return CommandResult::Error(
+                    "Usage: /budget <token-count> (e.g. /budget 65536)".to_string(),
+                );
+            }
+            let capped = tokens.min(claurst_core::constants::MAX_TOKENS_HARD_LIMIT);
+            if capped != tokens {
+                let mut new_config = ctx.config.clone();
+                new_config.max_tokens = Some(capped);
+                CommandResult::ConfigChangeMessage(
+                    new_config,
+                    format!("Budget capped to {} tokens (hard limit: {})", capped, claurst_core::constants::MAX_TOKENS_HARD_LIMIT),
+                )
+            } else {
+                let mut new_config = ctx.config.clone();
+                new_config.max_tokens = Some(capped);
+                CommandResult::ConfigChangeMessage(
+                    new_config,
+                    format!("Output token budget set to {}", capped),
+                )
+            }
+        }
+    }
+}
+
+// ---- /config -------------------------------------------------------------
+
+#[async_trait]
+impl SlashCommand for ConfigCommand {
+    fn name(&self) -> &str { "config" }
+    fn aliases(&self) -> Vec<&str> { vec!["settings"] }
+    fn description(&self) -> &str { "Show or modify configuration settings" }
+
+    async fn execute(&self, args: &str, ctx: &mut CommandContext) -> CommandResult {
+        let args = args.trim();
+        if args.is_empty() || matches!(args, "show" | "get") {
+            let json = serde_json::to_string_pretty(&ctx.config).unwrap_or_default();
+            return CommandResult::Message(format!(
+                "Current configuration:\n{}\n\nUsage:\n  /config\n  /config set theme <default|dark|light>\n  /config set output-style <default|concise|explanatory|learning|formal|casual>\n  /config set model <model>\n  /config set permission-mode <default|accept-edits|bypass-permissions|plan>\n  /config unset <model|output-style>",
+                json
+            ));
+        }
+
+        if let Some(key) = args.strip_prefix("get ").map(str::trim) {
+            return match key {
+                "theme" => CommandResult::Message(format!("theme = {:?}", ctx.config.theme)),
+                "output-style" | "output_style" => CommandResult::Message(format!(
+                    "output-style = {}",
+                    current_output_style_name(&ctx.config)
+                )),
+                "model" => CommandResult::Message(format!(
+                    "model = {}",
+                    ctx.config.effective_model()
+                )),
+                "permission-mode" | "permission_mode" => CommandResult::Message(format!(
+                    "permission-mode = {:?}",
+                    ctx.config.permission_mode
+                )),
+                other => CommandResult::Error(format!("Unknown config key '{}'", other)),
+            };
+        }
+
+        if let Some(key) = args.strip_prefix("unset ").map(str::trim) {
+            return match key {
+                "model" => {
+                    let mut new_config = ctx.config.clone();
+                    new_config.model = None;
+                    if let Err(err) = save_settings_mutation(|settings| settings.config.model = None)
+                    {
+                        return CommandResult::Error(format!(
+                            "Failed to save configuration: {}",
+                            err
+                        ));
+                    }
+                    CommandResult::ConfigChangeMessage(
+                        new_config,
+                        "Model reset to the default for new sessions.".to_string(),
+                    )
+                }
+                "output-style" | "output_style" => {
+                    let mut new_config = ctx.config.clone();
+                    new_config.output_style = None;
+                    if let Err(err) =
+                        save_settings_mutation(|settings| settings.config.output_style = None)
+                    {
+                        return CommandResult::Error(format!(
+                            "Failed to save configuration: {}",
+                            err
+                        ));
+                    }
+                    CommandResult::ConfigChangeMessage(
+                        new_config,
+                        "Output style reset to default.".to_string(),
+                    )
+                }
+                other => CommandResult::Error(format!("Unknown config key '{}'", other)),
+            };
+        }
+
+        let mut parts = args.splitn(3, ' ');
+        let command = parts.next().unwrap_or_default();
+        let key = parts.next().unwrap_or_default().trim();
+        let value = parts.next().unwrap_or_default().trim();
+        if command != "set" || key.is_empty() || value.is_empty() {
+            return CommandResult::Error("Usage: /config set <key> <value>".to_string());
+        }
+
+        match key {
+            "theme" => {
+                let Some(theme) = parse_theme(value) else {
+                    return CommandResult::Error(
+                        "Theme must be one of: default, dark, light".to_string(),
+                    );
+                };
+                let mut new_config = ctx.config.clone();
+                new_config.theme = theme.clone();
+                if let Err(err) =
+                    save_settings_mutation(|settings| settings.config.theme = theme.clone())
+                {
+                    return CommandResult::Error(format!("Failed to save configuration: {}", err));
+                }
+                CommandResult::ConfigChangeMessage(
+                    new_config,
+                    format!("Theme set to {}.", value.trim().to_lowercase()),
+                )
+            }
+            "output-style" | "output_style" => {
+                let normalized = value.trim().to_lowercase();
+                let valid = available_output_style_names();
+                if !valid.iter().any(|name| name == &normalized) {
+                    return CommandResult::Error(format!(
+                        "Unsupported output style '{}'. Use one of: {}",
+                        value,
+                        valid.join(", ")
+                    ));
+                }
+
+                let mut new_config = ctx.config.clone();
+                new_config.output_style =
+                    (normalized != "default").then(|| normalized.clone());
+                if let Err(err) = save_settings_mutation(|settings| {
+                    settings.config.output_style =
+                        (normalized != "default").then(|| normalized.clone());
+                }) {
+                    return CommandResult::Error(format!("Failed to save configuration: {}", err));
+                }
+                CommandResult::ConfigChangeMessage(
+                    new_config,
+                    format!(
+                        "Output style set to {}. Changes take effect on the next request.",
+                        normalized
+                    ),
+                )
+            }
+            "model" => {
+                let mut new_config = ctx.config.clone();
+                new_config.model = Some(value.to_string());
+                let inferred_provider = value
+                    .split_once('/')
+                    .map(|(provider, _)| provider.to_string());
+                if let Some(ref provider) = inferred_provider {
+                    new_config.provider = Some(provider.clone());
+                }
+                if let Err(err) = save_settings_mutation(|settings| {
+                    settings.config.model = Some(value.to_string());
+                    if let Some(ref provider) = inferred_provider {
+                        settings.provider = Some(provider.clone());
+                        settings.config.provider = Some(provider.clone());
+                    }
+                }) {
+                    return CommandResult::Error(format!("Failed to save configuration: {}", err));
+                }
+                CommandResult::ConfigChangeMessage(
+                    new_config,
+                    format!("Model set to {}.", value),
+                )
+            }
+            "permission-mode" | "permission_mode" => {
+                let mode = match value.trim().to_lowercase().as_str() {
+                    "default" => claurst_core::config::PermissionMode::Default,
+                    "accept-edits" | "accept_edits" => {
+                        claurst_core::config::PermissionMode::AcceptEdits
+                    }
+                    "bypass-permissions" | "bypass_permissions" => {
+                        claurst_core::config::PermissionMode::BypassPermissions
+                    }
+                    "plan" => claurst_core::config::PermissionMode::Plan,
+                    _ => {
+                        return CommandResult::Error(
+                            "Permission mode must be one of: default, accept-edits, bypass-permissions, plan"
+                                .to_string(),
+                        )
+                    }
+                };
+
+                let mut new_config = ctx.config.clone();
+                new_config.permission_mode = mode.clone();
+                if let Err(err) = save_settings_mutation(|settings| {
+                    settings.config.permission_mode = mode.clone();
+                }) {
+                    return CommandResult::Error(format!("Failed to save configuration: {}", err));
+                }
+                CommandResult::ConfigChangeMessage(
+                    new_config,
+                    format!("Permission mode set to {}.", value.trim().to_lowercase()),
+                )
+            }
+            other => CommandResult::Error(format!("Unknown config key '{}'", other)),
+        }
+    }
+}
+
+// ---- /color --------------------------------------------------------------
+
+#[async_trait]
+impl SlashCommand for ColorCommand {
+    fn name(&self) -> &str { "color" }
+    fn description(&self) -> &str { "Set or show the prompt bar color for this session" }
+    fn help(&self) -> &str {
+        "Usage: /color [<name|#RRGGBB|default>]\n\n\
+         Sets the accent color for the prompt bar in this session.\n\
+         Named colors: red, green, blue, yellow, cyan, magenta, white, orange, purple\n\
+         Hex codes:    #RGB or #RRGGBB\n\
+         Reset:        /color default\n\n\
+         The color is persisted to ~/.claurst/ui-settings.json and\n\
+         applied on the next REPL startup."
+    }
+
+    async fn execute(&self, args: &str, _ctx: &mut CommandContext) -> CommandResult {
+        let color = args.trim();
+        if color.is_empty() {
+            let current = load_ui_settings();
+            return CommandResult::Message(format!(
+                "Current prompt color: {}\n\
+                 Use /color <name|#RRGGBB|default> to change it.\n\n\
+                 Named colors: red, green, blue, yellow, cyan, magenta, white, orange, purple",
+                current.prompt_color.as_deref().unwrap_or("default"),
+            ));
+        }
+
+        let normalized = if color == "default" {
+            None
+        } else {
+            let known_colors = [
+                "red", "green", "blue", "yellow", "cyan", "magenta",
+                "white", "orange", "purple", "pink", "gray", "grey",
+            ];
+            let is_hex = color.starts_with('#') && (color.len() == 4 || color.len() == 7)
+                && color[1..].chars().all(|c| c.is_ascii_hexdigit());
+            if !is_hex && !known_colors.contains(&color.to_lowercase().as_str()) {
+                return CommandResult::Error(format!(
+                    "Unknown color '{}'. Use a color name (red, green, …) or a hex code (#RGB or #RRGGBB).",
+                    color
+                ));
+            }
+            Some(color.to_string())
+        };
+
+        match mutate_ui_settings(|s| s.prompt_color = normalized.clone()) {
+            Ok(_) => CommandResult::Message(format!(
+                "Prompt color set to {}.\n\
+                 Restart the REPL for the change to take effect.",
+                normalized.as_deref().unwrap_or("default")
+            )),
+            Err(e) => CommandResult::Error(format!("Failed to save color: {}", e)),
+        }
+    }
+}
+
 // ---- /version ------------------------------------------------------------
 
 #[async_trait]
@@ -1006,31 +1304,35 @@ impl SlashCommand for DiffCommand {
 #[async_trait]
 impl SlashCommand for InitCommand {
     fn name(&self) -> &str { "init" }
-    fn description(&self) -> &str { "Initialize a new project with AGENTS.md" }
+    fn description(&self) -> &str { "Deep recon scan: map project state and produce ATTRACTOR.md + STATE.md" }
+    fn help(&self) -> &str {
+        "Usage: /init\n\n\
+         Performs a deep recon scan of the project. Reads the project structure,\n\
+         manifest files, source code, and documentation. Then produces:\n\n\
+           ATTRACTOR.md — the immutable semantic seed (purpose, vision, philosophy)\n\
+           STATE.md     — the mutable project state ledger (invariants, architecture, issues)\n\n\
+         The agent uses its own tools to scan and write both files."
+    }
 
-    async fn execute(&self, _args: &str, ctx: &mut CommandContext) -> CommandResult {
-        let path = ctx.working_dir.join("AGENTS.md");
-        if path.exists() {
-            return CommandResult::Message(format!(
-                "AGENTS.md already exists at {}",
-                path.display()
-            ));
-        }
-
-        let default_content = "# Project Instructions\n\n\
-            Add project-specific instructions and context here.\n\n\
-            ## Guidelines\n\n\
-            - Describe your project structure\n\
-            - Note any coding conventions\n\
-            - List important files and their purposes\n";
-
-        match tokio::fs::write(&path, default_content).await {
-            Ok(()) => CommandResult::Message(format!(
-                "Created AGENTS.md at {}",
-                path.display()
-            )),
-            Err(e) => CommandResult::Error(format!("Failed to create AGENTS.md: {}", e)),
-        }
+    async fn execute(&self, _args: &str, _ctx: &mut CommandContext) -> CommandResult {
+        CommandResult::UserMessage(
+            "Perform a deep recon scan of this project to initialize the framework files.\n\n\
+             **Step 1 — Recon:** Read the project structure (directory listing), the manifest\n\
+             (Cargo.toml, package.json, or equivalent), key source files, entry points,\n\
+             and any existing documentation (README, docs/). Understand the architecture,\n\
+             the technology stack, the data flows, and the invariants.\n\n\
+             **Step 2 — Produce ATTRACTOR.md:** Write the semantic attractor of this project.\n\
+             This is the immutable seed — purpose, vision, philosophy, design principles.\n\
+             No code references, no tables, no syntax. Just the *why* of the project.\n\
+             This file shapes how the agent's identity anchors to the project.\n\n\
+             **Step 3 — Produce STATE.md:** Write the project state ledger. Map the architecture,\n\
+             verified invariants, framework file delivery modes, current topology phase,\n\
+             session intent, known issues, changes made, and next topological moves.\n\
+             This is the mutable *what* — it updates as the project evolves.\n\n\
+             Both files should reflect what you actually found during the scan, not\n\
+             generic placeholders. Be specific and grounded in the codebase reality."
+                .to_string()
+        )
     }
 }
 
@@ -1150,6 +1452,7 @@ pub fn all_commands() -> Vec<Box<dyn SlashCommand>> {
         Box::new(CostCommand),
         Box::new(ExitCommand),
         Box::new(ModelCommand),
+        Box::new(BudgetCommand),
         Box::new(ConfigCommand),
         Box::new(ColorCommand),
         Box::new(PluginCommand),

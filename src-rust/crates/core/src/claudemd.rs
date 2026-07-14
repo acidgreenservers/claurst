@@ -3,6 +3,10 @@
 //!
 //! Priority order: managed > user > project > local
 //! Supports @include directives, YAML frontmatter, and mtime-based caching.
+//!
+//! Framework files are loaded with delivery modes:
+//!   SessionStart — injected once at session creation (cacheable)
+//!   EveryTurn    — injected every turn in the dynamic block
 
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
@@ -27,6 +31,16 @@ pub enum MemoryScope {
     Local,
 }
 
+/// When a framework file is injected into the system prompt.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum DeliveryMode {
+    /// Sent once at session start (cacheable block).
+    SessionStart,
+    /// Sent every turn in the dynamic block.
+    EveryTurn,
+}
+
 /// Frontmatter parsed from a AGENTS.md file.
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct MemoryFrontmatter {
@@ -46,6 +60,8 @@ pub struct MemoryFileInfo {
     pub content: String,
     pub frontmatter: MemoryFrontmatter,
     pub mtime: Option<SystemTime>,
+    /// When this file is delivered to the system prompt.
+    pub delivery: DeliveryMode,
 }
 
 // ---------------------------------------------------------------------------
@@ -179,8 +195,12 @@ pub fn expand_includes(
 
 const MAX_FILE_SIZE: u64 = 40 * 1024; // 40 KB
 
-/// Load a single AGENTS.md file (respects MAX_FILE_SIZE, expands @includes).
-pub fn load_memory_file(path: &Path, scope: MemoryScope) -> Option<MemoryFileInfo> {
+/// Load a single framework file (respects MAX_FILE_SIZE, expands @includes).
+pub fn load_memory_file(
+    path: &Path,
+    scope: MemoryScope,
+    delivery: DeliveryMode,
+) -> Option<MemoryFileInfo> {
     let meta = std::fs::metadata(path).ok()?;
     if meta.len() > MAX_FILE_SIZE {
         eprintln!("WARNING: {} exceeds 40KB limit, skipping", path.display());
@@ -200,34 +220,92 @@ pub fn load_memory_file(path: &Path, scope: MemoryScope) -> Option<MemoryFileInf
         content,
         frontmatter,
         mtime,
+        delivery,
     })
 }
 
-/// Load memory files from a directory for a given scope.
+/// Framework file map entry.
+struct FrameworkFile {
+    name: &'static str,
+    delivery: DeliveryMode,
+}
+
+/// Load framework files from a directory for a given scope.
 ///
-/// Loads `AGENTS.md` first (primary/universal standard), then `CLAUDE.md` if
-/// present (Claude-specific additions or overrides). Either file may be absent.
+/// Uses the framework file map instead of a simple name list.
+/// Cascaded files (AGENTS.md, AGENT.md, USER.md) are handled by
+/// `load_cascaded_file` — they do not appear in the scope tables.
 fn load_scope_files(dir: &Path, scope: MemoryScope, files: &mut Vec<MemoryFileInfo>) {
-    for name in &["AGENTS.md", "CLAUDE.md"] {
-        let path = dir.join(name);
+    let file_map: &[FrameworkFile] = match scope {
+        // Managed scope: keep original wildcard *.md loading (handled separately).
+        MemoryScope::Managed => &[],
+
+        // User scope: empty — USER.md is cascaded (global → project).
+        MemoryScope::User => &[],
+
+        // Project scope: empty — AGENTS.md is cascaded (global → project).
+        MemoryScope::Project => &[],
+
+        // Local scope ({project_root}/.claurst/): project-only framework files.
+        // Cascaded files (AGENT.md, AGENTS.md, USER.md, BRAIN.md) are not in this table.
+        MemoryScope::Local => &[
+            FrameworkFile { name: "ATTRACTOR.md", delivery: DeliveryMode::SessionStart },
+            FrameworkFile { name: "HEART.md", delivery: DeliveryMode::SessionStart },
+            FrameworkFile { name: "MEMORY.md", delivery: DeliveryMode::SessionStart },
+            FrameworkFile { name: "STATE.md", delivery: DeliveryMode::EveryTurn },
+        ],
+    };
+
+    for entry in file_map {
+        let path = dir.join(entry.name);
         if path.exists() {
-            if let Some(f) = load_memory_file(&path, scope) {
+            if let Some(f) = load_memory_file(&path, scope, entry.delivery) {
                 files.push(f);
             }
         }
     }
 }
 
-/// Load all memory files for the given project root, in priority order.
+/// Cascade load: try global (~/.claurst/name) first, fall back to project ({root}/name).
 ///
-/// At each scope `AGENTS.md` is loaded first (universal standard), followed by
-/// `CLAUDE.md` if present (Claude-specific context). Either or both may exist.
-///
-/// Returned list is ordered: Managed (highest) → User → Project → Local.
-pub fn load_all_memory_files(project_root: &Path) -> Vec<MemoryFileInfo> {
-    let mut files = Vec::new();
+/// Used for AGENTS.md, AGENT.md, USER.md, and BRAIN.md — the four framework files
+/// that support a global override. Global files get `MemoryScope::User`; project
+/// fallback files get `MemoryScope::Project`.
+fn load_cascaded_file(
+    global_dir: &Path,
+    project_dir: &Path,
+    name: &str,
+    delivery: DeliveryMode,
+) -> Option<MemoryFileInfo> {
+    let global_path = global_dir.join(name);
+    if global_path.exists() {
+        return load_memory_file(&global_path, MemoryScope::User, delivery);
+    }
+    let project_path = project_dir.join(name);
+    if project_path.exists() {
+        return load_memory_file(&project_path, MemoryScope::Project, delivery);
+    }
+    None
+}
 
-    // 1. Managed: <claurst home>/rules/*.md
+/// Load all framework files for the given project root, in priority order.
+///
+/// Returns a tuple of (session_start_files, every_turn_files).
+/// Session-start files go into the cacheable system prompt block.
+/// Every-turn files go into the dynamic memory block.
+///
+/// Loading order:
+///   1. Managed: ~/.claurst/rules/*.md (EveryTurn)
+///   2. Cascaded SessionStart: AGENTS.md, AGENT.md, USER.md, BRAIN.md (global → project)
+///   3. Project-only SessionStart: ATTRACTOR.md, HEART.md, MEMORY.md
+///   4. EveryTurn duplicates: ATTRACTOR.md, HEART.md, MEMORY.md (SessionStart + EveryTurn)
+///   5. Project-only EveryTurn: STATE.md
+pub fn load_all_memory_files(
+    project_root: &Path,
+) -> (Vec<MemoryFileInfo>, Vec<MemoryFileInfo>) {
+    let mut all = Vec::new();
+
+    // 1. Managed: ~/.claurst/rules/*.md (EveryTurn delivery)
     {
         let claurst = crate::config::Settings::config_dir();
         let rules_dir = claurst.join("rules");
@@ -241,33 +319,113 @@ pub fn load_all_memory_files(project_root: &Path) -> Vec<MemoryFileInfo> {
                 .collect();
             paths.sort();
             for p in paths {
-                if let Some(f) = load_memory_file(&p, MemoryScope::Managed) {
-                    files.push(f);
+                if let Some(f) = load_memory_file(&p, MemoryScope::Managed, DeliveryMode::EveryTurn) {
+                    all.push(f);
                 }
             }
         }
 
-        // 2. User: <claurst home>/AGENTS.md then <claurst home>/CLAUDE.md
-        load_scope_files(&claurst, MemoryScope::User, &mut files);
+        let global_dir = claurst.clone();
+
+        // 2. Cascaded SessionStart: AGENTS.md, AGENT.md, USER.md, BRAIN.md (global → project)
+        for name in &["AGENTS.md", "AGENT.md", "USER.md", "BRAIN.md"] {
+            if let Some(f) = load_cascaded_file(
+                &global_dir, project_root, name, DeliveryMode::SessionStart,
+            ) {
+                all.push(f);
+            }
+        }
+
+        // 3. Project-only SessionStart: ATTRACTOR.md, HEART.md, MEMORY.md
+        load_scope_files(&project_root.join(".claurst"), MemoryScope::Local, &mut all);
+        // Also load project-root copies of the project-only session-start files
+        for name in &["ATTRACTOR.md", "HEART.md", "MEMORY.md"] {
+            let path = project_root.join(name);
+            if path.exists() {
+                if let Some(f) = load_memory_file(&path, MemoryScope::Project, DeliveryMode::SessionStart) {
+                    all.push(f);
+                }
+            }
+        }
+
+        // 4. EveryTurn duplicates for SessionStart + EveryTurn files.
+        //    ATTRACTOR.md, HEART.md, MEMORY.md are already loaded above with
+        //    SessionStart delivery (injected into <framework_identity>). Loading
+        //    them again with EveryTurn delivery ensures their names appear in
+        //    the periodic nudge file list for agent re-reading.
+        for name in &["ATTRACTOR.md", "HEART.md", "MEMORY.md"] {
+            // Check .claurst/ first
+            let local_path = project_root.join(".claurst").join(name);
+            if local_path.exists() {
+                if let Some(f) = load_memory_file(&local_path, MemoryScope::Local, DeliveryMode::EveryTurn) {
+                    all.push(f);
+                }
+            }
+            // Then project root
+            let root_path = project_root.join(name);
+            if root_path.exists() {
+                if let Some(f) = load_memory_file(&root_path, MemoryScope::Project, DeliveryMode::EveryTurn) {
+                    all.push(f);
+                }
+            }
+        }
+
+        // 5. Project-only EveryTurn: STATE.md
+        let state_path = project_root.join("STATE.md");
+        if state_path.exists() {
+            if let Some(f) = load_memory_file(&state_path, MemoryScope::Project, DeliveryMode::EveryTurn) {
+                all.push(f);
+            }
+        }
     }
 
-    // 3. Project: {project_root}/AGENTS.md then {project_root}/CLAUDE.md
-    load_scope_files(project_root, MemoryScope::Project, &mut files);
+    // Split by delivery mode.
 
-    // 4. Local: {project_root}/.claurst/AGENTS.md then {project_root}/.claurst/CLAUDE.md
-    load_scope_files(&project_root.join(".claurst"), MemoryScope::Local, &mut files);
+    // Split by delivery mode.
+    let session_start: Vec<_> = all
+        .iter()
+        .filter(|f| f.delivery == DeliveryMode::SessionStart && !f.content.trim().is_empty())
+        .cloned()
+        .collect();
+    let every_turn: Vec<_> = all
+        .iter()
+        .filter(|f| f.delivery == DeliveryMode::EveryTurn && !f.content.trim().is_empty())
+        .cloned()
+        .collect();
 
-    files
+    (session_start, every_turn)
 }
 
-/// Concatenate all memory file contents into a single system-prompt fragment.
-pub fn build_memory_prompt(files: &[MemoryFileInfo]) -> String {
-    files
+/// Concatenate framework files of a specific delivery mode into a prompt block.
+pub fn build_framework_identity(session_start_files: &[MemoryFileInfo]) -> String {
+    session_start_files
         .iter()
         .filter(|f| !f.content.trim().is_empty())
         .map(|f| f.content.trim().to_string())
         .collect::<Vec<_>>()
         .join("\n\n")
+}
+
+/// Concatenate every-turn memory files into a prompt block.
+pub fn build_memory_prompt(every_turn_files: &[MemoryFileInfo]) -> String {
+    every_turn_files
+        .iter()
+        .filter(|f| !f.content.trim().is_empty())
+        .map(|f| f.content.trim().to_string())
+        .collect::<Vec<_>>()
+        .join("\n\n")
+}
+
+/// Build the periodic nudge string listing files to re-read.
+pub fn build_periodic_nudge(file_names: &[String]) -> Option<String> {
+    if file_names.is_empty() {
+        return None;
+    }
+    let list = file_names.join(", ");
+    Some(format!(
+        "\n<periodic_nudge>\nBe proactive about your memory files: {{MEMORY.md, BRAIN.md}} Re-read the following files to refresh your context: {}\n</periodic_nudge>",
+        list
+    ))
 }
 
 #[cfg(test)]
@@ -292,28 +450,57 @@ mod tests {
     }
 
     #[test]
-    fn load_scope_prefers_agents_then_claude() {
+    fn load_agents_md_session_start() {
         let tmp = tempfile::tempdir().unwrap();
         std::fs::write(tmp.path().join("AGENTS.md"), "agents content").unwrap();
-        std::fs::write(tmp.path().join("CLAUDE.md"), "claude content").unwrap();
 
-        let files = load_all_memory_files(tmp.path());
-        // Filter to just the project-scope files from our temp dir.
-        let project: Vec<_> = files.iter().filter(|f| f.path.starts_with(tmp.path())).collect();
-        assert_eq!(project.len(), 2, "both AGENTS.md and CLAUDE.md should be loaded");
-        assert!(project[0].path.ends_with("AGENTS.md"), "AGENTS.md must come first");
-        assert!(project[1].path.ends_with("CLAUDE.md"), "CLAUDE.md must follow");
+        let (session_start, _every_turn) = load_all_memory_files(tmp.path());
+        // AGENTS.md at project root should be loaded as SessionStart.
+        let project: Vec<_> = session_start.iter().filter(|f| f.path.starts_with(tmp.path())).collect();
+        assert_eq!(project.len(), 1, "AGENTS.md should be loaded as session-start");
+        assert!(project[0].path.ends_with("AGENTS.md"));
+        assert_eq!(project[0].delivery, DeliveryMode::SessionStart);
     }
 
     #[test]
-    fn load_scope_claudemd_only_fallback() {
+    fn load_local_framework_files() {
+        let tmp = tempfile::tempdir().unwrap();
+        let local = tmp.path().join(".claurst");
+        std::fs::create_dir_all(&local).unwrap();
+        std::fs::write(local.join("AGENT.md"), "agent content").unwrap();
+        std::fs::write(local.join("HEART.md"), "heart content").unwrap();
+        std::fs::write(local.join("MEMORY.md"), "memory content").unwrap();
+
+        let (session_start, every_turn) = load_all_memory_files(tmp.path());
+        // AGENT.md is now cascaded (global → project), not loaded from .claurst/
+        // HEART.md: SessionStart (from local) + EveryTurn (duplicates)
+        // MEMORY.md: SessionStart (from local) + EveryTurn (duplicates)
+        let local_ss: Vec<_> = session_start.iter().filter(|f| f.path.starts_with(&local)).collect();
+        let local_et: Vec<_> = every_turn.iter().filter(|f| f.path.starts_with(&local)).collect();
+        
+        // SessionStart: HEART.md + MEMORY.md = 2
+        assert_eq!(local_ss.len(), 2, "Expected HEART.md + MEMORY.md in session-start");
+        // EveryTurn: HEART.md + MEMORY.md = 2
+        assert_eq!(local_et.len(), 2, "Expected HEART.md + MEMORY.md in every-turn");
+    }
+
+    #[test]
+    fn claude_md_is_ignored() {
         let tmp = tempfile::tempdir().unwrap();
         std::fs::write(tmp.path().join("CLAUDE.md"), "claude only").unwrap();
+        std::fs::write(tmp.path().join("AGENTS.md"), "agents content").unwrap();
 
-        let files = load_all_memory_files(tmp.path());
-        let project: Vec<_> = files.iter().filter(|f| f.path.starts_with(tmp.path())).collect();
-        assert_eq!(project.len(), 1);
-        assert!(project[0].path.ends_with("CLAUDE.md"));
+        let (session_start, every_turn) = load_all_memory_files(tmp.path());
+        let project: Vec<_> = session_start.iter()
+            .filter(|f| f.path.starts_with(tmp.path()))
+            .collect();
+        let et_project: Vec<_> = every_turn.iter()
+            .filter(|f| f.path.starts_with(tmp.path()))
+            .collect();
+        // CLAUDE.md is no longer loaded. Only AGENTS.md should appear.
+        assert_eq!(project.len(), 1, "Only AGENTS.md should load, not CLAUDE.md");
+        assert!(project[0].path.ends_with("AGENTS.md"));
+        assert!(et_project.is_empty(), "No every-turn files at project root");
     }
 
     #[test]

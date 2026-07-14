@@ -2,17 +2,17 @@
 # Claurst installer for Linux and macOS.
 #
 # Usage (one-liner):
-#   curl -fsSL https://github.com/Kuberwastaken/claurst/releases/latest/download/install.sh | bash
+#   curl -fsSL https://github.com/acidgreenservers/claurst/releases/latest/download/install.sh | bash
 #
 # Or download and run locally:
-#   curl -fsSL -O https://github.com/Kuberwastaken/claurst/releases/latest/download/install.sh
+#   curl -fsSL -O https://github.com/acidgreenservers/claurst/releases/latest/download/install.sh
 #   chmod +x install.sh
 #   ./install.sh
 
 set -euo pipefail
 
 APP=claurst
-REPO=Kuberwastaken/claurst
+REPO=acidgreenservers/claurst
 
 # ANSI colours
 MUTED='\033[0;2m'
@@ -35,7 +35,7 @@ Options:
         --install-dir <dir> Override install location (default: ${XDG_BIN_HOME:-~/.local/bin})
 
 Examples:
-    curl -fsSL https://github.com/Kuberwastaken/claurst/releases/latest/download/install.sh | bash
+    curl -fsSL https://github.com/acidgreenservers/claurst/releases/latest/download/install.sh | bash
     ./install.sh --version 0.1.0
     ./install.sh --binary /path/to/claurst
 EOF

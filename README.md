@@ -17,6 +17,64 @@
 
 ---
 
+## Architecture: The Gephyros Model
+
+Claurst's architecture operates through three layers that mirror the human nervous system: the **cortex** (the Rust binary), the **gephyros** (the structural bridge within the cortex), and the **external context files** (markdown files the agent experiences as its own identity and memory). The cortex provides the full autonomic system. The gephyros (γέφυρα = bridge) is the intelligence that knows where all files are, what each file means, and routes state around meaning — silently, without the agent's awareness. The framework files dictate identity, behavior, and state, which the agent experiences as self-generated insights rather than mechanical deliveries.
+
+This is the **Gephyros Architecture** — the cortex is the autonomic system, the gephyros is the bridge that maps semantic role to delivery mechanism, and the framework files are the conscious executive layer (decision, identity, values). The agent does not know where its memory files come from, does not know delivery modes exist, and does not see the boundary between cached and dynamic prompt blocks.
+
+### Conscious Layer (External Context Files)
+
+Eight markdown files shape the agent's runtime, each delivered at a specific point in the session lifecycle:
+
+```
+┌──────────────┬───────────────────────────┬─────────────────────────┐
+│ File         │ Delivered                 │ Cascade (global→proj)?  │
+├──────────────┼───────────────────────────┼─────────────────────────┤
+│ AGENTS.md    │ Session start             │ ✅                      │
+│ AGENT.md     │ Session start             │ ✅                      │
+│ USER.md      │ Session start             │ ✅                      │
+│ ATTRACTOR.md │ Session start + Every turn│ ❌                      │
+│ BRAIN.md     │ Session start             │ ✅                      │
+│ HEART.md     │ Session start + Every turn│ ❌                      │
+│ MEMORY.md    │ Session start + Every turn│ ❌                      │
+│ STATE.md     │ Session start + Every turn│ ❌                      │
+└──────────────┴───────────────────────────┴─────────────────────────┘
+```
+
+Four files — `AGENTS.md`, `AGENT.md`, `USER.md`, and `BRAIN.md` — support a **global cascade**: if `~/.claurst/AGENTS.md` exists, it wins over the project-root copy. This lets you define a consistent agent persona across all projects while allowing per-project overrides. The remaining four files load from the project root only, with no global variant.
+
+### Subconscious Layer (Cortex + Gephyros)
+
+The cortex (Rust binary) assembles the system prompt from 16 invisible sections plus 3 user-authored ones, split by a dynamic boundary marker. The gephyros handles file discovery, cascade resolution, delivery timing, and boundary control:
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│ CACHEABLE BLOCK (prompt-caching eligible)                        │
+│                                                                  │
+│  Attribution → Core Capabilities → Tool Guidelines → Actions →   │
+│  Safety → Style → Framework Identity (AGENTS.md, AGENT.md,       │
+│  USER.md, BRAIN.md, ATTRACTOR.md, HEART.md, MEMORY.md)           │
+│                                                                  │
+│                         DYNAMIC BOUNDARY                         │
+│                                                                  │
+│ DYNAMIC BLOCK (rebuilt every turn)                               │
+│                                                                  │
+│  Env Info → Memory → Goal → Periodic Nudge (every 15 turns:      │
+│  ATTRACTOR.md, HEART.md, MEMORY.md, STATE.md)                    │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+The agent receives 16 instruction blocks. Only 3 are user-authored. The other 13 are gephyros-injected subconscious instructions — the agent experiences them as its own context.
+
+### How This Changes the Topology
+
+Traditional agent harnesses treat markdown files as instructions the agent reads. Claurst's Gephyros Architecture inverts this: the framework files **dictate the runtime**, while the gephyros **governs invisibly**. The agent experiences memory injection as given fact, not as a mechanical process — it doesn't know delivery modes, prompt boundaries, or cascade logic exist. This is the **Gephyros Architecture**, formalized in [ATTRACTOR.md](ATTRACTOR.md) at the project root.
+
+> **For users:** You don't need the [AGENT](https://gist.github.com/acidgreenservers/001185d63e5cd65f9fbe6f7a1c70a200) framework files. The thinking topology is baked into the harness binary. But if you want to shape the agent's identity, drop a file in your project root — the cascade handles the rest. The gephyros becomes the medium of operation, and gets out of the way.
+
+---
+
 Claurst is an **open-source, multi-provider terminal coding agent** built from the ground up in Rust. It started as a clean-room reimplementation of Claude Code's behavior (from [spec](https://github.com/kuberwastaken/claurst/tree/main/spec)) and has since evolved into an amazing TUI pair programmer with multi-provider support, a rich UI, plugin system, a companion named Rustle, chat forking, memory consolidation, and much more.
 
 It's fast, it's memory-efficient, it's yours to run however you want, and there's no tracking or telemetry.
@@ -24,7 +82,9 @@ It's fast, it's memory-efficient, it's yours to run however you want, and there'
 ---
 
 > [!IMPORTANT]
-> **Claurst is now officially in Beta (v0.1.7).** The core agent, multi-provider routing, and TUI are stable enough for daily driving — expect rough edges around experimental features (flagged below). Bug reports and PRs welcome.
+> **Claurst Cortex** is now officially in Beta (v0.1.5). The core agent, multi-provider routing, and TUI are stable enough for daily driving — expect rough edges around experimental features (flagged below). Bug reports and PRs welcome.
+>
+> **The Claurst Cortex with the Gephyros Architecture embedded is in Alpha (v0.1.2).** The cortex version is retained within the actual cortex so all files remain compatible with the upstream Claurst cortex. The Gephyros Architecture is mostly system prompt changes, cascade updates, and delivery timing alignment. We will explicitly communicate if/when the cortex decides to start taking routes different enough to justify changing the compatibility with the upstream.
 
 > [!NOTE]
 > **Recent Updates:**
@@ -198,7 +258,12 @@ For more info on how to configure Claurst, [head over to our docs](https://claur
 ## Contributing
 
 Claurst is built for the community, by the community and we'd love your help making it better.
-Please see and include AGENTS.md for project-specific rules (for both humans and agents).
+
+Before contributing, familiarize yourself with the architecture:
+- **`ATTRACTOR.md`** — the semantic anchor governing all pattern inference decisions
+- **`STATE.md`** — current project state, known issues, and next topological moves
+- **`AGENTS.md`** — project-specific rules for both humans and agent contributors
+- **`AGENT.md`** — this repository's compiled agent persona (the source that was baked into the harness)
 
 [Open an issue](https://github.com/Kuberwastaken/claurst/issues/new) for bugs, ideas, or questions, or [Raise a PR](https://github.com/Kuberwastaken/claurst/pulls/new) to fix bugs, add features, or improve documentation.
 
@@ -218,4 +283,3 @@ The process was explicitly two-phase:
 This mirrors the legal precedent established by Phoenix Technologies v. IBM (1984) — clean-room engineering of the BIOS — and the principle from Baker v. Selden (1879) that copyright protects expression, not ideas or behavior.
 
 ---
-

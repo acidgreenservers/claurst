@@ -364,7 +364,7 @@ Fires when a previously created worktree is being removed.
 
 ### `InstructionsLoaded`
 
-Fires when a CLAUDE.md or rules file is loaded (observability-only, cannot block).
+Fires when an AGENT framework file is loaded (observability-only, cannot block).
 
 **Payload fields:** `file_path`, `memory_type` (`User`/`Project`/`Local`/`Managed`), `load_reason` (`session_start`, `nested_traversal`, `path_glob_match`, `include`, `compact`), and optional `globs`, `trigger_file_path`, `parent_file_path`.
 
