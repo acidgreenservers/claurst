@@ -4029,6 +4029,7 @@ mod tests {
     fn motion_e_basic() {
         assert_eq!(motion_e("hello world", 0), 4);  // cursor on 'h', end at 'o'
         assert_eq!(motion_e("hello world", 4), 10); // at 'o' (end), jump to 'd'
+        assert_eq!(motion_E("foo.bar baz", 0), 6); // end of 'foo.bar' WORD
     }
 
     #[test]
@@ -4036,11 +4037,6 @@ mod tests {
         // "foo.bar baz"  W from 0 → 8 ('b' of 'baz')
         assert_eq!(motion_W("foo.bar baz", 0), 8);
         assert_eq!(motion_B("foo.bar baz", 8), 0);
-    }
-
-    #[test]
-    fn motion_e_basic() {
-        assert_eq!(motion_E("foo.bar baz", 0), 6); // end of 'foo.bar' WORD
     }
 
     #[test]
