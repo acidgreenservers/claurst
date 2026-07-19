@@ -13,6 +13,10 @@ refs/
 # Agents
 .agents/
 
+# OpenCode
+.opencode/
+opencode.jsonc
+
 # Cline
 .clinerules/
 
