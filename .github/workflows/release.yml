@@ -377,7 +377,7 @@ jobs:
         with:
           tag_name: ${{ inputs.version }}
           target_commitish: ${{ github.sha }}
-          name: Claurst ${{ inputs.version }}
+          name: Claurst (AGENT Framework) ${{ inputs.version }}
           draft: false
           prerelease: false
           body_path: release-notes.md
