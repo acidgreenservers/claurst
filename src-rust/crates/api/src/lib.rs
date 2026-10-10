@@ -1,3 +1,5 @@
+#![allow(clippy::double_must_use)]
+
 // claurst-api: Anthropic API client with streaming SSE support for Claurst
 // Rust port.
 //

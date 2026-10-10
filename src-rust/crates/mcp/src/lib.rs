@@ -13,6 +13,8 @@
 // - Environment variable expansion in server configs
 // - Connection manager with exponential-backoff reconnection
 
+#![allow(clippy::double_must_use)]
+
 use async_trait::async_trait;
 use claurst_core::config::McpServerConfig;
 use claurst_core::mcp_templates::TemplateRenderer;

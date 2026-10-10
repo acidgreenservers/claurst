@@ -320,6 +320,7 @@ pub async fn write_transcript_entry(
         .await?;
 
     file.write_all(line.as_bytes()).await?;
+    file.flush().await?;
     // Transcripts may contain secrets read into context; keep them
     // owner-only (issue #212).
     crate::accounts::set_user_only_perms(path);
